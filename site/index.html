@@ -71,6 +71,24 @@
     .chip-oa    { background: #cffafe; color: var(--oa);    }
     #result-count { font-size: 12px; color: var(--muted); margin-left: auto; }
 
+    /* ── Search box ─────────────────────────────────────────── */
+    .search-wrap { position: relative; display: flex; align-items: center; }
+    #search-input {
+      width: 280px; padding: 5px 26px 5px 10px;
+      font-size: 12px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--surface); outline: none; transition: border-color .15s;
+    }
+    #search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px #dbeafe; }
+    #search-input::-webkit-search-cancel-button { display: none; }
+    .search-clear {
+      position: absolute; right: 6px; background: none; border: none;
+      font-size: 15px; color: var(--muted); cursor: pointer;
+      display: none; line-height: 1; padding: 0 2px;
+    }
+    .search-clear:hover { color: var(--text); }
+    .search-clear.visible { display: block; }
+    mark { background: #fef08a; color: inherit; border-radius: 2px; padding: 0 1px; }
+
     /* ── Papers: list ───────────────────────────────────────── */
     #paper-list { padding: 12px 20px; display: flex; flex-direction: column; gap: 6px; max-width: 1040px; }
 
@@ -172,6 +190,10 @@
 <!-- ── Papers panel ──────────────────────────────────── -->
 <div id="panel-papers" class="panel active">
   <div id="controls">
+    <div class="search-wrap">
+      <input id="search-input" type="search" placeholder="Search title, abstract, authors…" autocomplete="off">
+      <button id="search-clear" class="search-clear" title="Clear">×</button>
+    </div>
     <span class="ctrl-label">Sort</span>
     <select id="sort-sel">
       <option value="score-desc">Score ↓</option>
@@ -214,10 +236,12 @@
 "use strict";
 const PAGE = 50;
 let papers = [], rejects = [], history = [], config = {}, status = {};
-let activeSrc  = new Set(["arxiv","semantic_scholar","openalex"]);
-let sortKey    = "score-desc";
-let minScore   = 0;
-let page       = 0;
+let activeSrc   = new Set(["arxiv","semantic_scholar","openalex"]);
+let sortKey     = "score-desc";
+let minScore    = 0;
+let page        = 0;
+let searchQuery = "";
+let searchTimer = null;
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────
 async function init() {
@@ -265,8 +289,17 @@ document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () =>
 
 // ── Papers ─────────────────────────────────────────────────────────────────
 function sorted() {
+  const tokens = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
   return papers
-    .filter(p => p.score >= minScore && (p.sources || []).some(s => activeSrc.has(s)))
+    .filter(p => {
+      if (p.score < minScore) return false;
+      if (!(p.sources || []).some(s => activeSrc.has(s))) return false;
+      if (tokens.length) {
+        const hay = [p.title, p.abstract, ...(p.authors || [])].join(" ").toLowerCase();
+        if (!tokens.every(t => hay.includes(t))) return false;
+      }
+      return true;
+    })
     .sort((a, b) => {
       switch (sortKey) {
         case "score-desc": return b.score - a.score;
@@ -280,6 +313,17 @@ function sorted() {
 }
 
 function scoreLevel(s) { return s >= 0.35 ? "high" : s >= 0.18 ? "mid" : "low"; }
+
+function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+function highlight(rawText, query) {
+  const escaped = esc(rawText);
+  if (!query) return escaped;
+  const tokens = query.trim().split(/\s+/).filter(t => t.length > 1);
+  if (!tokens.length) return escaped;
+  const pattern = tokens.map(t => escRe(esc(t))).join("|");
+  return escaped.replace(new RegExp(`(${pattern})`, "gi"), "<mark>$1</mark>");
+}
 
 function srcTag(src) {
   const m = { arxiv:"st-arxiv arXiv", semantic_scholar:"st-s2 S2", openalex:"st-oa OA" };
@@ -317,14 +361,14 @@ function paperCard(p, uid) {
     </div>
     <div class="paper-body">
       <a class="paper-title" href="${p.url || "#"}" target="_blank" rel="noopener"
-         onclick="event.stopPropagation()">${esc(p.title)}</a>
+         onclick="event.stopPropagation()">${highlight(p.title, searchQuery)}</a>
       <div class="paper-meta">${esc(auth)} · ${p.year || "—"}</div>
       <div class="paper-srcs">${srcs}</div>
     </div>
     <div class="paper-acts">${links}</div>
   </div>
   <div class="paper-detail" id="d${uid}">
-    <div class="abstract">${p.abstract ? esc(p.abstract) : '<span style="color:var(--faint)">No abstract available.</span>'}</div>
+    <div class="abstract">${p.abstract ? highlight(p.abstract, searchQuery) : '<span style="color:var(--faint)">No abstract available.</span>'}</div>
     ${pills ? `<div class="detail-ids">${pills}</div>` : ""}
   </div>
 </div>`;
@@ -363,6 +407,28 @@ document.querySelectorAll(".src-chip").forEach(chip => chip.addEventListener("cl
   else                  { activeSrc.add(s);    chip.classList.add("on");    }
   page = 0; renderPapers();
 }));
+
+const searchInput = document.getElementById("search-input");
+const searchClear = document.getElementById("search-clear");
+
+searchInput.addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    searchQuery = e.target.value.trim();
+    searchClear.classList.toggle("visible", searchQuery.length > 0);
+    page = 0;
+    renderPapers();
+  }, 250);
+});
+
+searchClear.addEventListener("click", () => {
+  searchInput.value = "";
+  searchQuery = "";
+  searchClear.classList.remove("visible");
+  page = 0;
+  renderPapers();
+  searchInput.focus();
+});
 
 // ── Survey config ──────────────────────────────────────────────────────────
 function renderConfig() {
