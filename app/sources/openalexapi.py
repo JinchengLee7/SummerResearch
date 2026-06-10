@@ -21,8 +21,11 @@ def search(
     year_from: Optional[int] = None,
     year_to: Optional[int] = None,
 ) -> List[PaperCandidate]:
+    # OpenAlex returns 400 on question-form queries containing "?"
+    oa_query = query.replace("?", "").strip()
+
     params: dict = {
-        "search": query,
+        "search": oa_query,
         "per-page": min(max_results, 200),
         "select": _SELECT,
         "mailto": "dynamic-lr@example.com",

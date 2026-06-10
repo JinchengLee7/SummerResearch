@@ -12,9 +12,10 @@ logger = logging.getLogger(__name__)
 _API = "https://api.semanticscholar.org/graph/v1/paper/search"
 _FIELDS = "title,authors,year,abstract,externalIds,openAccessPdf,url"
 _DEFAULT_MAX = 25
-_RETRY_DELAY = 2.0
-# Free-tier rate limit: 1 req/s without API key.
+# Free-tier rate limit: ~1 req/s without API key.
+# On 429 we use exponential backoff: 5s then 15s.
 _RATE_SLEEP = 1.1
+_RETRY_DELAYS = [5.0, 15.0]
 
 
 def search(
@@ -39,8 +40,8 @@ def search(
             break
         except Exception as exc:
             logger.warning("S2 attempt %d failed: %s", attempt + 1, exc)
-            if attempt < 2:
-                time.sleep(_RETRY_DELAY)
+            if attempt < len(_RETRY_DELAYS):
+                time.sleep(_RETRY_DELAYS[attempt])
             else:
                 logger.error("S2 search failed for query %r: %s", query, exc)
                 return []
