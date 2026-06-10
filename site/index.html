@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic-LR</title>
+  <style>
+    :root {
+      --bg:      #f8f9fa;
+      --surface: #ffffff;
+      --border:  #e2e8f0;
+      --text:    #1a202c;
+      --muted:   #718096;
+      --accent:  #2563eb;
+      --green:   #16a34a;
+      --orange:  #ea580c;
+      --faint:   #9ca3af;
+      --arxiv:   #b91c1c;
+      --s2:      #7c3aed;
+      --oa:      #0891b2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+    /* ── Status bar ─────────────────────────────────────────── */
+    #statusbar {
+      background: var(--text); color: #fff;
+      padding: 10px 20px; display: flex; align-items: center; gap: 14px;
+    }
+    #statusbar h1 { font-size: 15px; font-weight: 700; letter-spacing: -.3px; }
+    .badge {
+      padding: 2px 9px; border-radius: 10px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+      background: var(--accent); color: #fff;
+    }
+    .sb-stat { font-size: 12px; color: #94a3b8; }
+    .sb-stat strong { color: #fff; }
+
+    /* ── Tab bar ────────────────────────────────────────────── */
+    #tabbar {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 20px; display: flex; gap: 2px;
+    }
+    .tab {
+      padding: 10px 16px; font-size: 13px; font-weight: 500;
+      color: var(--muted); cursor: pointer;
+      border-bottom: 2px solid transparent; user-select: none;
+    }
+    .tab.active  { color: var(--accent); border-color: var(--accent); }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Panel visibility ───────────────────────────────────── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Papers: controls ───────────────────────────────────── */
+    #controls {
+      padding: 10px 20px; background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    }
+    .ctrl-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    select { font-size: 12px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
+    .src-chip {
+      padding: 3px 9px; border-radius: 10px; font-size: 11px; font-weight: 700;
+      cursor: pointer; opacity: .35; transition: opacity .15s; user-select: none;
+    }
+    .src-chip.on { opacity: 1; }
+    .chip-arxiv { background: #fee2e2; color: var(--arxiv); }
+    .chip-s2    { background: #ede9fe; color: var(--s2);    }
+    .chip-oa    { background: #cffafe; color: var(--oa);    }
+    #result-count { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+    /* ── Papers: list ───────────────────────────────────────── */
+    #paper-list { padding: 12px 20px; display: flex; flex-direction: column; gap: 6px; max-width: 1040px; }
+
+    .paper-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .paper-main {
+      padding: 10px 14px; cursor: pointer;
+      display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: start;
+    }
+    .paper-main:hover { background: #f1f5f9; }
+
+    /* score column */
+    .score-col  { display: flex; flex-direction: column; align-items: center; gap: 3px; padding-top: 2px; }
+    .score-num  { font-size: 12px; font-weight: 700; }
+    .score-track { width: 36px; height: 4px; background: #e5e7eb; border-radius: 2px; }
+    .score-fill  { height: 4px; border-radius: 2px; }
+    .s-high { color: var(--green);  } .sf-high { background: var(--green);  }
+    .s-mid  { color: var(--orange); } .sf-mid  { background: var(--orange); }
+    .s-low  { color: var(--faint);  } .sf-low  { background: var(--faint);  }
+
+    /* paper body */
+    .paper-body  { min-width: 0; }
+    .paper-title { font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; line-height: 1.4; }
+    .paper-title:hover { text-decoration: underline; }
+    .paper-meta  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .paper-srcs  { display: flex; gap: 4px; margin-top: 5px; }
+    .src-tag     { padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 700; }
+    .st-arxiv { background: #fee2e2; color: var(--arxiv); }
+    .st-s2    { background: #ede9fe; color: var(--s2);    }
+    .st-oa    { background: #cffafe; color: var(--oa);    }
+
+    /* actions */
+    .paper-acts  { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; padding-top: 2px; }
+    .ilink {
+      font-size: 10px; font-weight: 600; color: var(--muted); text-decoration: none;
+      padding: 2px 6px; border: 1px solid var(--border); border-radius: 3px; white-space: nowrap;
+    }
+    .ilink:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* expanded detail */
+    .paper-detail { padding: 10px 14px 14px; border-top: 1px solid var(--border); background: #f8fafc; display: none; }
+    .paper-detail.open { display: block; }
+    .abstract  { font-size: 12px; line-height: 1.65; color: #374151; }
+    .detail-ids { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .id-pill   { font-size: 10px; color: var(--muted); background: #e5e7eb; padding: 2px 7px; border-radius: 3px; }
+
+    /* pagination */
+    #pagination { padding: 14px 20px; display: flex; gap: 8px; align-items: center; }
+    .page-btn { padding: 4px 12px; font-size: 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); cursor: pointer; }
+    .page-btn:hover:not(:disabled) { background: var(--bg); }
+    .page-btn:disabled { opacity: .4; cursor: default; }
+    .page-info { font-size: 12px; color: var(--muted); }
+
+    /* ── Survey config panel ────────────────────────────────── */
+    #panel-config { padding: 24px 20px; max-width: 720px; }
+    .cfg-section { margin-bottom: 22px; }
+    .cfg-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 7px; }
+    .cfg-value { font-size: 13px; line-height: 1.5; }
+    .cfg-rq { padding: 8px 12px; background: var(--surface); border-left: 3px solid var(--accent); font-size: 12px; margin-bottom: 6px; border-radius: 0 4px 4px 0; line-height: 1.5; }
+    .cfg-pill { display: inline-block; background: #eff6ff; color: var(--accent); border: 1px solid #bfdbfe; padding: 2px 10px; border-radius: 12px; font-size: 12px; margin: 2px; }
+
+    /* ── Run history panel ──────────────────────────────────── */
+    #panel-history { padding: 20px; max-width: 920px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 8px 10px; background: var(--surface); border-bottom: 2px solid var(--border); font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+    .ok  { color: var(--green);  font-weight: 700; }
+    .err { color: var(--orange); font-weight: 700; }
+
+    /* ── Rejects panel ──────────────────────────────────────── */
+    #panel-rejects { padding: 12px 20px; max-width: 1040px; }
+    .reject-reason {
+      display: inline-block; padding: 2px 8px; border-radius: 8px;
+      font-size: 10px; font-weight: 700; background: #fee2e2; color: var(--arxiv);
+      text-transform: uppercase; letter-spacing: .4px;
+    }
+    .empty-state { padding: 48px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<!-- Status bar -->
+<div id="statusbar">
+  <h1>Dynamic-LR</h1>
+  <span id="sb-arch" class="badge">—</span>
+  <span id="sb-papers" class="sb-stat"></span>
+  <span id="sb-run"    class="sb-stat"></span>
+</div>
+
+<!-- Tab bar -->
+<div id="tabbar">
+  <div class="tab active" data-tab="papers">Papers</div>
+  <div class="tab" data-tab="config">Survey Config</div>
+  <div class="tab" data-tab="history">Run History</div>
+  <div class="tab" data-tab="rejects">Rejects</div>
+</div>
+
+<!-- ── Papers panel ──────────────────────────────────── -->
+<div id="panel-papers" class="panel active">
+  <div id="controls">
+    <span class="ctrl-label">Sort</span>
+    <select id="sort-sel">
+      <option value="score-desc">Score ↓</option>
+      <option value="score-asc">Score ↑</option>
+      <option value="year-desc">Year ↓</option>
+      <option value="year-asc">Year ↑</option>
+      <option value="title-asc">Title A→Z</option>
+    </select>
+    <span class="ctrl-label">Sources</span>
+    <div style="display:flex;gap:5px">
+      <span class="src-chip chip-arxiv on" data-src="arxiv">arXiv</span>
+      <span class="src-chip chip-s2 on"    data-src="semantic_scholar">S2</span>
+      <span class="src-chip chip-oa on"    data-src="openalex">OpenAlex</span>
+    </div>
+    <span class="ctrl-label">Min score</span>
+    <input type="range" id="score-range" min="0" max="1" step="0.01" value="0" style="width:80px">
+    <span id="score-lbl" style="font-size:12px;color:var(--muted);min-width:28px">0.00</span>
+    <span id="result-count"></span>
+  </div>
+  <div id="paper-list"></div>
+  <div id="pagination"></div>
+</div>
+
+<!-- ── Survey config panel ───────────────────────────── -->
+<div id="panel-config" class="panel">
+  <div id="config-body"></div>
+</div>
+
+<!-- ── Run history panel ─────────────────────────────── -->
+<div id="panel-history" class="panel">
+  <div id="history-body"></div>
+</div>
+
+<!-- ── Rejects panel ─────────────────────────────────── -->
+<div id="panel-rejects" class="panel">
+  <div id="rejects-body"></div>
+</div>
+
+<script>
+"use strict";
+const PAGE = 50;
+let papers = [], rejects = [], history = [], config = {}, status = {};
+let activeSrc  = new Set(["arxiv","semantic_scholar","openalex"]);
+let sortKey    = "score-desc";
+let minScore   = 0;
+let page       = 0;
+
+// ── Bootstrap ──────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    [papers, rejects, history, config, status] = await Promise.all([
+      fetch("data/papers.json").then(r => r.json()),
+      fetch("data/rejects.json").then(r => r.json()),
+      fetch("data/run_history.json").then(r => r.json()),
+      fetch("data/survey_config.json").then(r => r.json()),
+      fetch("data/system_status.json").then(r => r.json()),
+    ]);
+  } catch (e) {
+    document.body.innerHTML =
+      `<div style="padding:40px;font-family:monospace;color:#b91c1c">
+        <b>Could not load data files.</b><br><br>${e}<br><br>
+        Serve this directory with a local HTTP server:<br>
+        <code style="background:#f1f5f9;padding:4px 8px;border-radius:3px">
+          cd site &amp;&amp; python -m http.server 8000
+        </code>
+      </div>`;
+    return;
+  }
+  renderStatus(); renderPapers(); renderConfig(); renderHistory(); renderRejects();
+}
+
+// ── Status bar ─────────────────────────────────────────────────────────────
+function renderStatus() {
+  document.getElementById("sb-arch").textContent = status.architecture || "—";
+  document.getElementById("sb-papers").innerHTML =
+    `<strong>${status.total_papers ?? papers.length}</strong> papers`;
+  if (status.last_run) {
+    const d = new Date(status.last_run);
+    document.getElementById("sb-run").innerHTML =
+      `last run <strong>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</strong>`;
+  }
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(x => x.classList.remove("active"));
+  t.classList.add("active");
+  document.getElementById("panel-" + t.dataset.tab).classList.add("active");
+}));
+
+// ── Papers ─────────────────────────────────────────────────────────────────
+function sorted() {
+  return papers
+    .filter(p => p.score >= minScore && (p.sources || []).some(s => activeSrc.has(s)))
+    .sort((a, b) => {
+      switch (sortKey) {
+        case "score-desc": return b.score - a.score;
+        case "score-asc":  return a.score - b.score;
+        case "year-desc":  return (b.year || 0) - (a.year || 0);
+        case "year-asc":   return (a.year || 0) - (b.year || 0);
+        case "title-asc":  return (a.title || "").localeCompare(b.title || "");
+      }
+      return 0;
+    });
+}
+
+function scoreLevel(s) { return s >= 0.35 ? "high" : s >= 0.18 ? "mid" : "low"; }
+
+function srcTag(src) {
+  const m = { arxiv:"st-arxiv arXiv", semantic_scholar:"st-s2 S2", openalex:"st-oa OA" };
+  const [cls, label] = (m[src] || "").split(" ");
+  return cls ? `<span class="src-tag ${cls}">${label}</span>` : "";
+}
+
+function paperCard(p, uid) {
+  const lvl  = scoreLevel(p.score);
+  const ids  = p.identifiers || {};
+  const pct  = Math.round(p.score * 100);
+  const auth = (p.authors || []).slice(0, 3).join(", ") +
+               ((p.authors || []).length > 3 ? " et al." : "");
+  const srcs = (p.sources || []).map(srcTag).join("");
+
+  const links = [
+    p.pdf_url       && `<a class="ilink" href="${p.pdf_url}" target="_blank" rel="noopener">PDF</a>`,
+    ids.doi         && `<a class="ilink" href="https://doi.org/${ids.doi}" target="_blank" rel="noopener">DOI</a>`,
+    ids.arxiv_id    && `<a class="ilink" href="https://arxiv.org/abs/${ids.arxiv_id}" target="_blank" rel="noopener">arXiv</a>`,
+  ].filter(Boolean).join("");
+
+  const pills = [
+    ids.doi                  && `DOI: ${ids.doi}`,
+    ids.arxiv_id             && `arXiv: ${ids.arxiv_id}`,
+    ids.openalex_id          && `OA: ${ids.openalex_id}`,
+    ids.semantic_scholar_id  && `S2: ${ids.semantic_scholar_id}`,
+  ].filter(Boolean).map(x => `<span class="id-pill">${esc(x)}</span>`).join("");
+
+  return `
+<div class="paper-card">
+  <div class="paper-main" onclick="toggle('d${uid}')">
+    <div class="score-col">
+      <span class="score-num s-${lvl}">${p.score.toFixed(2)}</span>
+      <div class="score-track"><div class="score-fill sf-${lvl}" style="width:${pct}%"></div></div>
+    </div>
+    <div class="paper-body">
+      <a class="paper-title" href="${p.url || "#"}" target="_blank" rel="noopener"
+         onclick="event.stopPropagation()">${esc(p.title)}</a>
+      <div class="paper-meta">${esc(auth)} · ${p.year || "—"}</div>
+      <div class="paper-srcs">${srcs}</div>
+    </div>
+    <div class="paper-acts">${links}</div>
+  </div>
+  <div class="paper-detail" id="d${uid}">
+    <div class="abstract">${p.abstract ? esc(p.abstract) : '<span style="color:var(--faint)">No abstract available.</span>'}</div>
+    ${pills ? `<div class="detail-ids">${pills}</div>` : ""}
+  </div>
+</div>`;
+}
+
+function renderPapers() {
+  const data  = sorted();
+  const start = page * PAGE;
+  const slice = data.slice(start, start + PAGE);
+  document.getElementById("result-count").textContent =
+    `${data.length} of ${papers.length} papers`;
+  document.getElementById("paper-list").innerHTML =
+    slice.map((p, i) => paperCard(p, start + i)).join("");
+
+  const total = Math.ceil(data.length / PAGE);
+  document.getElementById("pagination").innerHTML = total <= 1 ? "" : `
+    <button class="page-btn" onclick="goPage(${page-1})" ${page===0?"disabled":""}>← Prev</button>
+    <span class="page-info">Page ${page+1} of ${total}</span>
+    <button class="page-btn" onclick="goPage(${page+1})" ${page>=total-1?"disabled":""}>Next →</button>`;
+}
+
+window.toggle  = id => { const el = document.getElementById(id); if (el) el.classList.toggle("open"); };
+window.goPage  = p  => { page = p; renderPapers(); window.scrollTo(0, 0); };
+
+document.getElementById("sort-sel").addEventListener("change", e => {
+  sortKey = e.target.value; page = 0; renderPapers();
+});
+document.getElementById("score-range").addEventListener("input", e => {
+  minScore = parseFloat(e.target.value);
+  document.getElementById("score-lbl").textContent = minScore.toFixed(2);
+  page = 0; renderPapers();
+});
+document.querySelectorAll(".src-chip").forEach(chip => chip.addEventListener("click", () => {
+  const s = chip.dataset.src;
+  if (activeSrc.has(s)) { activeSrc.delete(s); chip.classList.remove("on"); }
+  else                  { activeSrc.add(s);    chip.classList.add("on");    }
+  page = 0; renderPapers();
+}));
+
+// ── Survey config ──────────────────────────────────────────────────────────
+function renderConfig() {
+  const c   = config;
+  const rqs = (c.research_questions || [])
+    .map(q => `<div class="cfg-rq">${esc(q)}</div>`).join("");
+  const hints = (c.query_hints || [])
+    .map(h => `<span class="cfg-pill">${esc(h)}</span>`).join("");
+
+  document.getElementById("config-body").innerHTML = `
+    <div class="cfg-section">
+      <div class="cfg-label">Topic overview</div>
+      <div class="cfg-value">${esc(c.topic_overview || "—")}</div>
+    </div>
+    <div class="cfg-section">
+      <div class="cfg-label">Research questions</div>
+      ${rqs || "<span style='color:var(--muted)'>None</span>"}
+    </div>
+    <div class="cfg-section">
+      <div class="cfg-label">Query hints</div>
+      <div>${hints || "<span style='color:var(--muted)'>None</span>"}</div>
+    </div>
+    ${c.question_context ? `
+    <div class="cfg-section">
+      <div class="cfg-label">Context</div>
+      <div class="cfg-value">${esc(c.question_context)}</div>
+    </div>` : ""}
+    <div class="cfg-section">
+      <div class="cfg-label">Timeline</div>
+      <div class="cfg-value">${c.timeline_from_year ?? "—"} – ${c.timeline_to_year ?? "—"}</div>
+    </div>
+    <div class="cfg-section">
+      <div class="cfg-label">Min relevance score</div>
+      <div class="cfg-value">${c.min_relevance_score ?? "—"}</div>
+    </div>`;
+}
+
+// ── Run history ────────────────────────────────────────────────────────────
+function renderHistory() {
+  if (!history.length) {
+    document.getElementById("history-body").innerHTML =
+      '<p class="empty-state">No runs recorded yet.</p>';
+    return;
+  }
+  const rows = [...history].reverse().map(r => {
+    const dur = (r.started_at && r.finished_at)
+      ? ((new Date(r.finished_at) - new Date(r.started_at)) / 1000).toFixed(0) + "s"
+      : "—";
+    const errCount = (r.errors || []).length;
+    return `<tr>
+      <td><span class="badge" style="font-size:10px">${esc(r.architecture)}</span></td>
+      <td>${new Date(r.started_at).toLocaleString()}</td>
+      <td>${r.queries_generated}</td>
+      <td>${r.candidates_found}</td>
+      <td>${r.candidates_after_dedupe}</td>
+      <td class="ok">${r.papers_accepted}</td>
+      <td style="color:var(--orange)">${r.candidates_rejected}</td>
+      <td>${dur}</td>
+      <td class="${errCount ? "err" : "ok"}">${errCount || "✓"}</td>
+    </tr>`;
+  }).join("");
+
+  document.getElementById("history-body").innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Arch</th><th>Run time</th><th>Queries</th>
+        <th>Raw</th><th>Deduped</th><th>Accepted</th>
+        <th>Rejected</th><th>Duration</th><th>Errors</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ── Rejects ────────────────────────────────────────────────────────────────
+function renderRejects() {
+  if (!rejects.length) {
+    document.getElementById("rejects-body").innerHTML =
+      '<p class="empty-state">No rejected candidates in this run.</p>';
+    return;
+  }
+  const cards = rejects.map((p, i) => {
+    const lvl  = scoreLevel(p.score);
+    const auth = (p.authors || []).slice(0, 3).join(", ") +
+                 ((p.authors || []).length > 3 ? " et al." : "");
+    return `
+<div class="paper-card">
+  <div class="paper-main" onclick="toggle('r${i}')">
+    <div class="score-col">
+      <span class="score-num s-${lvl}">${p.score.toFixed(2)}</span>
+    </div>
+    <div class="paper-body">
+      <a class="paper-title" href="${p.url || "#"}" target="_blank" rel="noopener"
+         onclick="event.stopPropagation()">${esc(p.title)}</a>
+      <div class="paper-meta">${esc(auth)} · ${p.year || "—"}</div>
+      <div style="margin-top:5px">
+        <span class="reject-reason">${esc(p.rejection_reason || "unknown")}</span>
+      </div>
+    </div>
+  </div>
+  <div class="paper-detail" id="r${i}">
+    <div class="abstract">${p.abstract ? esc(p.abstract) : '<span style="color:var(--faint)">No abstract available.</span>'}</div>
+  </div>
+</div>`;
+  }).join("");
+
+  document.getElementById("rejects-body").innerHTML =
+    `<div style="display:flex;flex-direction:column;gap:6px">${cards}</div>`;
+}
+
+// ── Util ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+init();
+</script>
+</body>
+</html>
