@@ -1,0 +1,19 @@
+{
+  "topic_overview": "large language models for software engineering",
+  "research_questions": [
+    "How do large language models improve automated code review?",
+    "What are the benchmarks for LLM-based code generation?",
+    "How effective are LLMs for automated bug detection and repair?"
+  ],
+  "question_context": "Focus on empirical studies and practical applications published after 2020.",
+  "query_hints": [
+    "LLM code review",
+    "automated program repair",
+    "code generation transformer",
+    "neural code intelligence",
+    "GitHub Copilot evaluation"
+  ],
+  "timeline_from_year": 2020,
+  "timeline_to_year": 2025,
+  "min_relevance_score": 0.1
+}
