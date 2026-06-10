@@ -23,6 +23,8 @@ class PaperCandidate:
     raw: Dict[str, Any] = field(default_factory=dict)
     score: float = 0.0
     rejection_reason: Optional[str] = None
+    paper_id: Optional[str] = None
+    embedding_score: Optional[float] = None
 
 
 @dataclass
