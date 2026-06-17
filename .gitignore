@@ -30,3 +30,10 @@ site/data/
 .vscode/
 .idea/
 *.swp
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
