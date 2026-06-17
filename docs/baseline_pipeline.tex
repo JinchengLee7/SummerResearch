@@ -1,0 +1,405 @@
+\documentclass[a4paper,landscape]{article}
+\usepackage[margin=0.9cm]{geometry}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amssymb}
+\usetikzlibrary{
+  shapes.geometric,
+  arrows.meta,
+  positioning,
+  fit,
+  backgrounds,
+  calc
+}
+
+%% Colours
+\definecolor{colInput}{RGB}{52,152,219}
+\definecolor{colQuery}{RGB}{155,89,182}
+\definecolor{colLoop}{RGB}{243,156,18}
+\definecolor{colSource}{RGB}{39,174,96}
+\definecolor{colDedupe}{RGB}{230,126,34}
+\definecolor{colScore}{RGB}{231,76,60}
+\definecolor{colFilter}{RGB}{22,160,133}
+\definecolor{colPersist}{RGB}{44,62,80}
+\definecolor{colSite}{RGB}{100,120,130}
+\definecolor{colResult}{RGB}{52,73,94}
+\definecolor{colReject}{RGB}{192,57,43}
+
+%% two-arg box style
+\tikzset{
+  box/.style 2 args={
+    rectangle, rounded corners=4pt,
+    draw=#1!75!black, fill=#1!11,
+    text width=#2, align=center,
+    font=\small, inner sep=5pt, minimum height=1em
+  },
+  hdr/.style={
+    rectangle, rounded corners=3pt,
+    draw=#1!90!black, fill=#1!75,
+    text=white, font=\bfseries\small,
+    inner sep=4pt, minimum height=1.6em, align=center
+  },
+  pill/.style={
+    rectangle, rounded corners=2pt,
+    draw=#1!55, fill=#1!8,
+    font=\scriptsize, inner sep=4pt, align=left
+  },
+  region/.style={
+    rectangle, rounded corners=7pt,
+    draw=#1!40, fill=#1!4,
+    dashed, inner sep=9pt
+  },
+  arr/.style={
+    -{Stealth[length=5pt]}, thick, #1
+  },
+  rejarr/.style={
+    -{Stealth[length=4.5pt]}, dashed, colReject!80!black, thick
+  },
+  backarr/.style={
+    -{Stealth[length=5pt]}, rounded corners=5pt, thick, #1
+  },
+}
+
+\begin{document}
+\pagestyle{empty}
+
+\begin{tikzpicture}[node distance=0pt]
+
+%% ─── TITLE ────────────────────────────────────────────────────────────────
+\node[font=\Large\bfseries, text=colResult] (title) at (0,0)
+  {Dynamic-LR \textbf{·} Baseline Architecture Pipeline};
+\node[font=\normalsize\itshape, text=gray, right=5pt of title.south east, anchor=south west]
+  {Deterministic \textbullet{} No LLM \textbullet{} Reproducible};
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% STAGE 1 — INPUT
+%% ═══════════════════════════════════════════════════════════════════════════
+\node[hdr=colInput, below=1.6cm of title.west, anchor=north west,
+      minimum width=4.6cm] (hdr_input) {INPUT};
+
+\node[box={colInput}{4.6cm}, below=5pt of hdr_input] (cfg_topic)
+  {\textbf{topic\_overview}\\[2pt]
+   \scriptsize``large language models for software engineering''};
+
+\node[box={colInput}{4.6cm}, below=3pt of cfg_topic] (cfg_rq)
+  {\textbf{research\_questions} (3)\\[2pt]
+   \scriptsize How LLMs improve code review?\\
+   Benchmarks for LLM code generation?\\
+   LLMs for bug detection \& repair?};
+
+\node[box={colInput}{4.6cm}, below=3pt of cfg_rq] (cfg_hints)
+  {\textbf{query\_hints} (5)\\[2pt]
+   \scriptsize LLM code review \textbullet{} automated program repair\\
+   code generation transformer\\
+   neural code intelligence \textbullet{} Copilot eval};
+
+\node[box={colInput}{4.6cm}, below=3pt of cfg_hints] (cfg_meta)
+  {\textbf{timeline}: 2020--2025 \quad \textbf{min\_score}: 0.1};
+
+\node[region=colInput,
+      fit=(hdr_input)(cfg_meta),
+      label={[font=\tiny\itshape, colInput!70]below:data/survey\_config.json}]
+  (reg_input) {};
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% STAGE 2 — QUERY BUILDER
+%% ═══════════════════════════════════════════════════════════════════════════
+\node[hdr=colQuery, minimum width=4.0cm,
+      right=1.6cm of hdr_input] (hdr_qb) {QUERY BUILDER};
+
+\node[box={colQuery}{4.0cm}, below=5pt of hdr_qb] (qb_r1)
+  {\textbf{R1} \texttt{topic\_overview} $\to$ 1 query};
+\node[box={colQuery}{4.0cm}, below=3pt of qb_r1] (qb_r2)
+  {\textbf{R2} each \texttt{research\_question} $\to$ 3};
+\node[box={colQuery}{4.0cm}, below=3pt of qb_r2] (qb_r3)
+  {\textbf{R3} each \texttt{query\_hint} $\to$ 5};
+\node[box={colQuery}{4.0cm}, below=3pt of qb_r3] (qb_r4)
+  {\textbf{R4} topic + each hint $\to$ 5 combined};
+\node[box={colQuery}{4.0cm}, below=3pt of qb_r4] (qb_post)
+  {deduplicate \textrightarrow{} truncate $\leq 20$};
+
+\node[region=colQuery,
+      fit=(hdr_qb)(qb_post),
+      label={[font=\tiny\itshape, colQuery!70]below:query\_builder.py}]
+  (reg_qb) {};
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% STAGE 3 — OUTER LOOP  (for query in queries)
+%% ═══════════════════════════════════════════════════════════════════════════
+\node[hdr=colLoop, minimum width=4.0cm,
+      right=1.5cm of hdr_qb] (hdr_ol)
+  {\texttt{for} query \texttt{in} queries};
+
+\node[box={colLoop}{3.8cm}, below=5pt of hdr_ol] (ol_desc)
+  {\scriptsize iterate over each of the $\leq 20$ queries};
+
+\node[font=\scriptsize\bfseries, text=colLoop!80!black,
+      below=4pt of ol_desc] (ol_back)
+  {$\circlearrowleft$ \; next query};
+
+\node[region=colLoop,
+      fit=(hdr_ol)(ol_back),
+      label={[font=\tiny\itshape, colLoop!70]below:outer loop \textbullet{} pipeline.py}]
+  (reg_ol) {};
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% STAGE 4 — INNER LOOP × SOURCE SEARCH
+%% ═══════════════════════════════════════════════════════════════════════════
+\node[hdr=colSource, minimum width=4.4cm,
+      right=1.5cm of hdr_ol] (hdr_il)
+  {\texttt{for} source \texttt{in} [arXiv,S2,OA]};
+
+\node[box={colSource}{4.4cm}, below=5pt of hdr_il] (src_ax)
+  {\textbf{arXiv} \textbullet{} Atom XML \textbullet{} urllib\\
+   \scriptsize 3 retries \textbullet{} 20 s timeout \textbullet{} 25 results/q};
+\node[box={colSource}{4.4cm}, below=3pt of src_ax] (src_s2)
+  {\textbf{Semantic Scholar} \textbullet{} JSON REST\\
+   \scriptsize 1 req/s \textbullet{} 429 $\to$ backoff [5 s, 15 s]};
+\node[box={colSource}{4.4cm}, below=3pt of src_s2] (src_oa)
+  {\textbf{OpenAlex} \textbullet{} JSON REST\\
+   \scriptsize strips \texttt{?} \textbullet{} 25 results/q};
+\node[pill=colSource, below=3pt of src_oa, text width=4.2cm] (src_err)
+  {\scriptsize API error $\Rightarrow$ log(source, query, type, msg) $\Rightarrow$ \textbf{continue}};
+\node[font=\scriptsize\bfseries, text=colSource!80!black,
+      below=3pt of src_err] (il_back)
+  {$\circlearrowleft$ \; next source \; then $\circlearrowleft$ next query};
+
+\node[region=colSource,
+      fit=(hdr_il)(il_back),
+      label={[font=\tiny\itshape, colSource!70]below:inner loop \textbullet{} arxiv.py / semantic\_scholar.py / openalexapi.py}]
+  (reg_il) {};
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% OUTER LOOP BACK ARROW (from bottom of inner loop block back to outer loop)
+%% ═══════════════════════════════════════════════════════════════════════════
+\draw[backarr=colLoop!70!black]
+  (reg_il.south) -- ++(0,-0.45)
+  -- node[below, font=\tiny\itshape, text=colLoop!75!black]
+       {next query (outer loop continues)}
+  ++(-4.1cm, 0)
+  -- (reg_ol.south);
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% STAGE 5 — DEDUPLICATION  (for c in candidates)
+%% ═══════════════════════════════════════════════════════════════════════════
+\node[hdr=colDedupe, minimum width=4.4cm,
+      right=1.5cm of hdr_il] (hdr_dd)
+  {\texttt{for} c \texttt{in} candidates};
+
+\node[box={colDedupe}{4.4cm}, below=5pt of hdr_dd] (dd_lbl)
+  {\textbf{DEDUPLICATION} (5-level priority)};
+
+\node[box={colDedupe}{4.4cm}, below=3pt of dd_lbl] (dd_p1)
+  {\scriptsize \textbf{P1} DOI};
+\node[box={colDedupe}{4.4cm}, below=2pt of dd_p1] (dd_p2)
+  {\scriptsize \textbf{P2} arXiv ID};
+\node[box={colDedupe}{4.4cm}, below=2pt of dd_p2] (dd_p3)
+  {\scriptsize \textbf{P3} OpenAlex ID};
+\node[box={colDedupe}{4.4cm}, below=2pt of dd_p3] (dd_p4)
+  {\scriptsize \textbf{P4} Semantic Scholar ID};
+\node[box={colDedupe}{4.4cm}, below=2pt of dd_p4] (dd_p5)
+  {\scriptsize \textbf{P5} title $|$ year $|$ first-author fingerprint};
+\node[pill=colDedupe, below=3pt of dd_p5, text width=4.2cm] (dd_merge)
+  {\scriptsize merge: fill abstract \textbullet{} combine sources \textbullet{} keep IDs \textbullet{} prefer PDF URL};
+\node[font=\scriptsize\bfseries, text=colDedupe!80!black,
+      below=3pt of dd_merge] (dd_back)
+  {$\circlearrowleft$ \; next candidate};
+
+\node[region=colDedupe,
+      fit=(hdr_dd)(dd_back),
+      label={[font=\tiny\itshape, colDedupe!70]below:dedupe.py}]
+  (reg_dd) {};
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% STAGE 6 — SCORING  (for c in unique_candidates)
+%% ═══════════════════════════════════════════════════════════════════════════
+\node[hdr=colScore, minimum width=4.6cm,
+      right=1.5cm of hdr_dd] (hdr_sc)
+  {\texttt{for} c \texttt{in} unique\_candidates};
+
+\node[box={colScore}{4.6cm}, below=5pt of hdr_sc] (sc_lbl)
+  {\textbf{RELEVANCE SCORING} (deterministic)};
+
+\node[box={colScore}{4.6cm}, below=3pt of sc_lbl] (sc_t)
+  {\scriptsize Title keyword overlap \hfill \textbf{0.30}};
+\node[box={colScore}{4.6cm}, below=2pt of sc_t] (sc_a)
+  {\scriptsize Abstract keyword overlap \hfill \textbf{0.25}};
+\node[box={colScore}{4.6cm}, below=2pt of sc_a] (sc_rq)
+  {\scriptsize Research question overlap \hfill \textbf{0.20}};
+\node[box={colScore}{4.6cm}, below=2pt of sc_rq] (sc_h)
+  {\scriptsize Query hint overlap \hfill \textbf{0.10}};
+\node[box={colScore}{4.6cm}, below=2pt of sc_h] (sc_s)
+  {\scriptsize Multi-source bonus \hfill \textbf{+0.05}/extra};
+\node[box={colScore}{4.6cm}, below=2pt of sc_s] (sc_id)
+  {\scriptsize Identifier availability ($\div$4) \hfill \textbf{0.05}};
+\node[box={colScore}{4.6cm}, below=2pt of sc_id] (sc_pdf)
+  {\scriptsize Open-access PDF \hfill \textbf{0.03}};
+\node[box={colScore}{4.6cm}, below=2pt of sc_pdf] (sc_yr)
+  {\scriptsize Year in declared range \hfill \textbf{0.07}};
+\node[pill=colScore, below=3pt of sc_yr, text width=4.4cm] (sc_note)
+  {\scriptsize tokens: words $\ge$3 chars, 50 stop-words removed; score clipped $[0,1]$, 4 d.p.};
+\node[font=\scriptsize\bfseries, text=colScore!80!black,
+      below=3pt of sc_note] (sc_back)
+  {$\circlearrowleft$ \; next candidate};
+
+\node[region=colScore,
+      fit=(hdr_sc)(sc_back),
+      label={[font=\tiny\itshape, colScore!70]below:scorer.py}]
+  (reg_sc) {};
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% STAGE 7 — FILTERING  (for c in scored_candidates)
+%% ═══════════════════════════════════════════════════════════════════════════
+\node[hdr=colFilter, minimum width=4.2cm,
+      right=1.5cm of hdr_sc] (hdr_fl)
+  {\texttt{for} c \texttt{in} scored\_candidates};
+
+\node[box={colFilter}{4.2cm}, below=5pt of hdr_fl] (fl_lbl)
+  {\textbf{FILTERING} (ordered rules)};
+
+\node[box={colFilter}{4.2cm}, below=3pt of fl_lbl] (fl_r1)
+  {\scriptsize \textbf{R1} missing\_title $\to$ reject};
+\node[box={colFilter}{4.2cm}, below=2pt of fl_r1] (fl_r2)
+  {\scriptsize \textbf{R2} year\_out\_of\_range $\to$ reject};
+\node[box={colFilter}{4.2cm}, below=2pt of fl_r2] (fl_r3)
+  {\scriptsize \textbf{R3} below\_relevance\_threshold $\to$ reject};
+\node[box={colFilter}{4.2cm}, below=2pt of fl_r3] (fl_else)
+  {\scriptsize else $\to$ \textbf{accept}};
+\node[pill=colFilter, below=3pt of fl_else, text width=4.0cm] (fl_note)
+  {\scriptsize first-match wins \textbullet{} every reject carries an explicit reason string};
+\node[font=\scriptsize\bfseries, text=colFilter!80!black,
+      below=3pt of fl_note] (fl_back)
+  {$\circlearrowleft$ \; next candidate};
+
+\node[region=colFilter,
+      fit=(hdr_fl)(fl_back),
+      label={[font=\tiny\itshape, colFilter!70]below:filters.py}]
+  (reg_fl) {};
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% ACCEPT / REJECT split
+%% ═══════════════════════════════════════════════════════════════════════════
+\node[rectangle, rounded corners=3pt,
+      draw=colFilter, fill=colFilter!18,
+      font=\small\bfseries, inner sep=5pt,
+      below=1.1cm of reg_fl.south, xshift=-1.3cm] (acc_node) {ACCEPTED};
+
+\node[rectangle, rounded corners=3pt,
+      draw=colReject, fill=colReject!13,
+      font=\small\bfseries, inner sep=5pt,
+      right=0.5cm of acc_node] (rej_node) {REJECTED};
+
+\draw[arr=colFilter] (reg_fl.south) -- ++(0,-0.35) -| (acc_node.north)
+  node[pos=0.2, right, font=\tiny, colFilter]{accept};
+\draw[rejarr]        (reg_fl.south) -- ++(0,-0.35) -| (rej_node.north)
+  node[pos=0.2, left, font=\tiny, colReject]{reject};
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% BOTTOM ROW
+%% ═══════════════════════════════════════════════════════════════════════════
+
+%% ─── PERSISTENCE ──────────────────────────────────────────────────────────
+\node[hdr=colPersist, minimum width=4.8cm,
+      below=2.5cm of acc_node.south, xshift=1.0cm] (hdr_ps) {PERSISTENCE};
+
+\node[box={colPersist}{4.8cm}, below=5pt of hdr_ps] (ps_papers)
+  {\scriptsize \texttt{data/papers.ndjson} \quad (append, NDJSON)};
+\node[box={colPersist}{4.8cm}, below=3pt of ps_papers] (ps_rej)
+  {\scriptsize \texttt{data/rejects.ndjson} \quad (append, NDJSON)};
+\node[box={colPersist}{4.8cm}, below=3pt of ps_rej] (ps_hist)
+  {\scriptsize \texttt{data/run\_history.ndjson}};
+\node[box={colPersist}{4.8cm}, below=3pt of ps_hist] (ps_clog)
+  {\scriptsize \texttt{data/changelog.md}};
+
+\node[region=colPersist,
+      fit=(hdr_ps)(ps_clog),
+      label={[font=\tiny\itshape, colPersist!70]below:store.py \textbullet{} paper\_id = "p" + sha256[:15]}]
+  (reg_ps) {};
+
+\draw[arr=colFilter]  (acc_node.south) -- ++(0,-0.3) -| (ps_papers.north)
+  node[pos=0.1, right, font=\tiny]{papers};
+\draw[rejarr]         (rej_node.south) -- ++(0,-0.3) -| (ps_rej.north)
+  node[pos=0.1, left, font=\tiny]{rejects};
+
+%% ─── SITE PUBLISH ─────────────────────────────────────────────────────────
+\node[hdr=colSite, minimum width=4.2cm,
+      left=1.6cm of hdr_ps] (hdr_site) {SITE PUBLISH};
+
+\node[box={colSite}{4.2cm}, below=5pt of hdr_site] (st_p)
+  {\scriptsize \texttt{site/data/papers.json}};
+\node[box={colSite}{4.2cm}, below=3pt of st_p] (st_r)
+  {\scriptsize \texttt{site/data/rejects.json}};
+\node[box={colSite}{4.2cm}, below=3pt of st_r] (st_h)
+  {\scriptsize \texttt{site/data/run\_history.json}};
+\node[box={colSite}{4.2cm}, below=3pt of st_h] (st_cfg)
+  {\scriptsize \texttt{site/data/survey\_config.json}};
+\node[box={colSite}{4.2cm}, below=3pt of st_cfg] (st_sys)
+  {\scriptsize \texttt{site/data/system\_status.json}};
+
+\node[region=colSite,
+      fit=(hdr_site)(st_sys),
+      label={[font=\tiny\itshape, colSite!70]below:publish\_site\_data()}]
+  (reg_site) {};
+
+\draw[arr=colPersist] (reg_ps.west) -- node[above,font=\tiny]{export} (reg_site.east);
+
+%% ─── MANAGER RUN RESULT ───────────────────────────────────────────────────
+\node[hdr=colResult, minimum width=4.8cm,
+      left=1.6cm of hdr_site] (hdr_res) {MANAGER RUN RESULT};
+
+\node[box={colResult}{4.8cm}, below=5pt of hdr_res] (res_box)
+  {\scriptsize
+   architecture = "baseline"\\[2pt]
+   queries\_generated \textbullet{} sources\_queried\\
+   candidates\_found \textbullet{} candidates\_after\_dedupe\\
+   papers\_accepted \textbullet{} candidates\_rejected\\
+   dry\_run \textbullet{} started\_at \textbullet{} finished\_at\\[3pt]
+   \textit{errors}: list of non-fatal error strings};
+
+\node[region=colResult, fit=(hdr_res)(res_box)] (reg_res) {};
+
+\draw[arr=colSite] (reg_site.west) -- node[above,font=\tiny]{metadata} (reg_res.east);
+
+%% ─── dry-run note ─────────────────────────────────────────────────────────
+\node[rectangle, rounded corners=3pt,
+      draw=gray!55, fill=gray!8,
+      font=\scriptsize\itshape, inner sep=5pt,
+      below=4pt of reg_res.south, anchor=north] (dryrun)
+  {\texttt{--dry-run}: all file writes are simulated; all loop logic executes identically};
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% MAIN FLOW ARROWS (horizontal top row)
+%% ═══════════════════════════════════════════════════════════════════════════
+\draw[arr=colInput]  (reg_input.east)  -- node[above,font=\tiny]{config}   (reg_qb.west);
+\draw[arr=colQuery]  (reg_qb.east)     -- node[above,font=\tiny]{queries}  (reg_ol.west);
+\draw[arr=colLoop]   (reg_ol.east)     -- node[above,font=\tiny]{query}    (reg_il.west);
+\draw[arr=colSource] (reg_il.east)     -- node[above,font=\tiny]{raw list} (reg_dd.west);
+\draw[arr=colDedupe] (reg_dd.east)     -- node[above,font=\tiny]{unique}   (reg_sc.west);
+\draw[arr=colScore]  (reg_sc.east)     -- node[above,font=\tiny]{scored}   (reg_fl.west);
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%% LEGEND
+%% ═══════════════════════════════════════════════════════════════════════════
+\node[rectangle, rounded corners=4pt,
+      draw=colLoop!55, fill=colLoop!7,
+      font=\scriptsize, inner sep=7pt, align=left,
+      below=0.5cm of dryrun.south, anchor=north] (legend)
+  {\textbf{Loop Control Legend}\\[4pt]
+   $\circlearrowleft$\; \textbf{Outer loop}: \texttt{for query in queries} \quad up to 20 iterations\\[3pt]
+   $\circlearrowleft$\; \textbf{Inner loop}: \texttt{for source in [arXiv, S2, OpenAlex]} \quad 3 iterations per query \quad
+        \textit{total calls} $\leq 60$\\[3pt]
+   $\circlearrowleft$\; \textbf{Candidate loops} (x3): dedupe, score, filter each run \texttt{for c in candidates}\\[3pt]
+   \textcolor{colReject}{\textbf{- -$\,\blacktriangleright$}}\; reject path \quad
+   \textcolor{colFilter}{\textbf{---$\blacktriangleright$}}\; accept path \quad
+   \textcolor{colLoop!80!black}{\textbf{---$\blacktriangleright$}}\; loop back-edge (amber)};
+
+%% CLI footer
+\node[font=\tiny\ttfamily, text=gray!80,
+      below=4pt of legend.south, anchor=north] (clinote)
+  {python -m app.run --architecture baseline [--dry-run] [--verbose] \quad|\quad
+   pipeline.py orchestrates all loops \quad|\quad store.py handles all I/O};
+
+\end{tikzpicture}
+\end{document}
