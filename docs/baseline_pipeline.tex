@@ -1,405 +1,365 @@
 \documentclass[a4paper,landscape]{article}
-\usepackage[margin=0.9cm]{geometry}
+\usepackage[margin=0.65cm]{geometry}
 \usepackage{tikz}
-\usepackage{xcolor}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{amssymb}
-\usetikzlibrary{
-  shapes.geometric,
-  arrows.meta,
-  positioning,
-  fit,
-  backgrounds,
-  calc
-}
+\usepackage{xcolor}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
 
-%% Colours
-\definecolor{colInput}{RGB}{52,152,219}
-\definecolor{colQuery}{RGB}{155,89,182}
-\definecolor{colLoop}{RGB}{243,156,18}
-\definecolor{colSource}{RGB}{39,174,96}
-\definecolor{colDedupe}{RGB}{230,126,34}
-\definecolor{colScore}{RGB}{231,76,60}
-\definecolor{colFilter}{RGB}{22,160,133}
-\definecolor{colPersist}{RGB}{44,62,80}
-\definecolor{colSite}{RGB}{100,120,130}
-\definecolor{colResult}{RGB}{52,73,94}
-\definecolor{colReject}{RGB}{192,57,43}
+\definecolor{Ci}{RGB}{52,152,219}
+\definecolor{Cq}{RGB}{155,89,182}
+\definecolor{Cl}{RGB}{243,156,18}
+\definecolor{Cs}{RGB}{39,174,96}
+\definecolor{Cd}{RGB}{230,126,34}
+\definecolor{Cv}{RGB}{231,76,60}
+\definecolor{Cf}{RGB}{22,160,133}
+\definecolor{Cp}{RGB}{44,62,80}
+\definecolor{Cw}{RGB}{100,120,130}
+\definecolor{Cr}{RGB}{192,57,43}
+\definecolor{Co}{RGB}{52,73,94}
 
-%% two-arg box style
 \tikzset{
-  box/.style 2 args={
-    rectangle, rounded corners=4pt,
-    draw=#1!75!black, fill=#1!11,
-    text width=#2, align=center,
-    font=\small, inner sep=5pt, minimum height=1em
-  },
-  hdr/.style={
-    rectangle, rounded corners=3pt,
-    draw=#1!90!black, fill=#1!75,
-    text=white, font=\bfseries\small,
-    inner sep=4pt, minimum height=1.6em, align=center
-  },
-  pill/.style={
-    rectangle, rounded corners=2pt,
-    draw=#1!55, fill=#1!8,
-    font=\scriptsize, inner sep=4pt, align=left
-  },
-  region/.style={
-    rectangle, rounded corners=7pt,
-    draw=#1!40, fill=#1!4,
-    dashed, inner sep=9pt
-  },
-  arr/.style={
-    -{Stealth[length=5pt]}, thick, #1
-  },
-  rejarr/.style={
-    -{Stealth[length=4.5pt]}, dashed, colReject!80!black, thick
-  },
-  backarr/.style={
-    -{Stealth[length=5pt]}, rounded corners=5pt, thick, #1
-  },
+  SH/.style={rectangle, rounded corners=3pt,
+    draw=#1!85!black, fill=#1!72, text=white,
+    font=\bfseries\scriptsize, inner sep=5pt, align=center},
+  CB/.style={rectangle, rounded corners=2pt,
+    draw=#1!65!black, fill=#1!12,
+    font=\scriptsize, inner sep=4pt, align=center},
+  IP/.style={rectangle, rounded corners=2pt,
+    draw=#1!50!black, fill=#1!8,
+    font=\tiny, inner sep=3pt, align=left},
+  RG/.style={rectangle, rounded corners=6pt,
+    draw=#1!40!black, fill=#1!4,
+    dashed, inner sep=7pt},
+  fwd/.style={-{Stealth[length=4pt,width=3pt]}, thick, #1},
+  bk/.style={-{Stealth[length=4pt,width=3pt]}, thick, Cl!80!black,
+    rounded corners=5pt},
+  rej/.style={-{Stealth[length=4pt,width=3pt]}, thick, Cr, dashed}
 }
 
 \begin{document}
 \pagestyle{empty}
+\begin{tikzpicture}[node distance=3pt, every node/.style={font=\scriptsize}]
 
-\begin{tikzpicture}[node distance=0pt]
-
-%% ─── TITLE ────────────────────────────────────────────────────────────────
-\node[font=\Large\bfseries, text=colResult] (title) at (0,0)
-  {Dynamic-LR \textbf{·} Baseline Architecture Pipeline};
-\node[font=\normalsize\itshape, text=gray, right=5pt of title.south east, anchor=south west]
-  {Deterministic \textbullet{} No LLM \textbullet{} Reproducible};
+%% ── TITLE ──────────────────────────────────────────────────────────────────
+\node[font=\large\bfseries, text=Co] (TITLE) at (0,0)
+  {Dynamic-LR\enspace$\cdot$\enspace Baseline Architecture Pipeline\quad
+   {\normalfont\small\itshape\textcolor{gray}{Deterministic $\cdot$ No LLM $\cdot$ Reproducible}}};
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%% STAGE 1 — INPUT
+%%  COLUMN 1 — INPUT
 %% ═══════════════════════════════════════════════════════════════════════════
-\node[hdr=colInput, below=1.6cm of title.west, anchor=north west,
-      minimum width=4.6cm] (hdr_input) {INPUT};
+\node[SH=Ci, text width=3.5cm,
+      below=1.3cm of TITLE.west, anchor=north west] (H1) {INPUT};
 
-\node[box={colInput}{4.6cm}, below=5pt of hdr_input] (cfg_topic)
+\node[CB=Ci, text width=3.5cm, below=3pt of H1] (C1a)
   {\textbf{topic\_overview}\\[2pt]
-   \scriptsize``large language models for software engineering''};
+   \tiny``large language models\\for software engineering''};
 
-\node[box={colInput}{4.6cm}, below=3pt of cfg_topic] (cfg_rq)
+\node[CB=Ci, text width=3.5cm, below=3pt of C1a] (C1b)
   {\textbf{research\_questions} (3)\\[2pt]
-   \scriptsize How LLMs improve code review?\\
-   Benchmarks for LLM code generation?\\
+   \tiny How LLMs improve code review?\\
+   Benchmarks for LLM code gen?\\
    LLMs for bug detection \& repair?};
 
-\node[box={colInput}{4.6cm}, below=3pt of cfg_rq] (cfg_hints)
+\node[CB=Ci, text width=3.5cm, below=3pt of C1b] (C1c)
   {\textbf{query\_hints} (5)\\[2pt]
-   \scriptsize LLM code review \textbullet{} automated program repair\\
+   \tiny LLM code review\\
+   automated program repair\\
    code generation transformer\\
-   neural code intelligence \textbullet{} Copilot eval};
+   neural code intelligence\\
+   GitHub Copilot evaluation};
 
-\node[box={colInput}{4.6cm}, below=3pt of cfg_hints] (cfg_meta)
-  {\textbf{timeline}: 2020--2025 \quad \textbf{min\_score}: 0.1};
+\node[CB=Ci, text width=3.5cm, below=3pt of C1c] (C1d)
+  {\textbf{timeline}: 2020--2025\quad\textbf{min\_score}: 0.1};
 
-\node[region=colInput,
-      fit=(hdr_input)(cfg_meta),
-      label={[font=\tiny\itshape, colInput!70]below:data/survey\_config.json}]
-  (reg_input) {};
-
-%% ═══════════════════════════════════════════════════════════════════════════
-%% STAGE 2 — QUERY BUILDER
-%% ═══════════════════════════════════════════════════════════════════════════
-\node[hdr=colQuery, minimum width=4.0cm,
-      right=1.6cm of hdr_input] (hdr_qb) {QUERY BUILDER};
-
-\node[box={colQuery}{4.0cm}, below=5pt of hdr_qb] (qb_r1)
-  {\textbf{R1} \texttt{topic\_overview} $\to$ 1 query};
-\node[box={colQuery}{4.0cm}, below=3pt of qb_r1] (qb_r2)
-  {\textbf{R2} each \texttt{research\_question} $\to$ 3};
-\node[box={colQuery}{4.0cm}, below=3pt of qb_r2] (qb_r3)
-  {\textbf{R3} each \texttt{query\_hint} $\to$ 5};
-\node[box={colQuery}{4.0cm}, below=3pt of qb_r3] (qb_r4)
-  {\textbf{R4} topic + each hint $\to$ 5 combined};
-\node[box={colQuery}{4.0cm}, below=3pt of qb_r4] (qb_post)
-  {deduplicate \textrightarrow{} truncate $\leq 20$};
-
-\node[region=colQuery,
-      fit=(hdr_qb)(qb_post),
-      label={[font=\tiny\itshape, colQuery!70]below:query\_builder.py}]
-  (reg_qb) {};
+\begin{scope}[on background layer]
+\node[RG=Ci, fit=(H1)(C1a)(C1b)(C1c)(C1d),
+      label={[font=\tiny\itshape,Ci!70]below:survey\_config.json}] (R1) {};
+\end{scope}
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%% STAGE 3 — OUTER LOOP  (for query in queries)
+%%  COLUMN 2 — QUERY BUILDER
 %% ═══════════════════════════════════════════════════════════════════════════
-\node[hdr=colLoop, minimum width=4.0cm,
-      right=1.5cm of hdr_qb] (hdr_ol)
-  {\texttt{for} query \texttt{in} queries};
+\node[SH=Cq, text width=3.2cm,
+      right=0.55cm of R1, anchor=north west] (H2) {QUERY BUILDER};
 
-\node[box={colLoop}{3.8cm}, below=5pt of hdr_ol] (ol_desc)
-  {\scriptsize iterate over each of the $\leq 20$ queries};
+\node[CB=Cq, text width=3.2cm, below=3pt of H2] (C2a)
+  {\textbf{R1} topic\_overview $\to$ 1\,q};
+\node[CB=Cq, text width=3.2cm, below=3pt of C2a] (C2b)
+  {\textbf{R2} each research\_question $\to$ 3\,q};
+\node[CB=Cq, text width=3.2cm, below=3pt of C2b] (C2c)
+  {\textbf{R3} each query\_hint $\to$ 5\,q};
+\node[CB=Cq, text width=3.2cm, below=3pt of C2c] (C2d)
+  {\textbf{R4} topic\,+\,each hint $\to$ 5\,q};
+\node[CB=Cq, text width=3.2cm, below=3pt of C2d] (C2e)
+  {deduplicate \quad truncate $\leq 20$};
 
-\node[font=\scriptsize\bfseries, text=colLoop!80!black,
-      below=4pt of ol_desc] (ol_back)
-  {$\circlearrowleft$ \; next query};
-
-\node[region=colLoop,
-      fit=(hdr_ol)(ol_back),
-      label={[font=\tiny\itshape, colLoop!70]below:outer loop \textbullet{} pipeline.py}]
-  (reg_ol) {};
-
-%% ═══════════════════════════════════════════════════════════════════════════
-%% STAGE 4 — INNER LOOP × SOURCE SEARCH
-%% ═══════════════════════════════════════════════════════════════════════════
-\node[hdr=colSource, minimum width=4.4cm,
-      right=1.5cm of hdr_ol] (hdr_il)
-  {\texttt{for} source \texttt{in} [arXiv,S2,OA]};
-
-\node[box={colSource}{4.4cm}, below=5pt of hdr_il] (src_ax)
-  {\textbf{arXiv} \textbullet{} Atom XML \textbullet{} urllib\\
-   \scriptsize 3 retries \textbullet{} 20 s timeout \textbullet{} 25 results/q};
-\node[box={colSource}{4.4cm}, below=3pt of src_ax] (src_s2)
-  {\textbf{Semantic Scholar} \textbullet{} JSON REST\\
-   \scriptsize 1 req/s \textbullet{} 429 $\to$ backoff [5 s, 15 s]};
-\node[box={colSource}{4.4cm}, below=3pt of src_s2] (src_oa)
-  {\textbf{OpenAlex} \textbullet{} JSON REST\\
-   \scriptsize strips \texttt{?} \textbullet{} 25 results/q};
-\node[pill=colSource, below=3pt of src_oa, text width=4.2cm] (src_err)
-  {\scriptsize API error $\Rightarrow$ log(source, query, type, msg) $\Rightarrow$ \textbf{continue}};
-\node[font=\scriptsize\bfseries, text=colSource!80!black,
-      below=3pt of src_err] (il_back)
-  {$\circlearrowleft$ \; next source \; then $\circlearrowleft$ next query};
-
-\node[region=colSource,
-      fit=(hdr_il)(il_back),
-      label={[font=\tiny\itshape, colSource!70]below:inner loop \textbullet{} arxiv.py / semantic\_scholar.py / openalexapi.py}]
-  (reg_il) {};
+\begin{scope}[on background layer]
+\node[RG=Cq, fit=(H2)(C2a)(C2b)(C2c)(C2d)(C2e),
+      label={[font=\tiny\itshape,Cq!70]below:query\_builder.py}] (R2) {};
+\end{scope}
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%% OUTER LOOP BACK ARROW (from bottom of inner loop block back to outer loop)
+%%  COLUMN 3 — OUTER LOOP
 %% ═══════════════════════════════════════════════════════════════════════════
-\draw[backarr=colLoop!70!black]
-  (reg_il.south) -- ++(0,-0.45)
-  -- node[below, font=\tiny\itshape, text=colLoop!75!black]
-       {next query (outer loop continues)}
-  ++(-4.1cm, 0)
-  -- (reg_ol.south);
+\node[SH=Cl, text width=2.6cm,
+      right=0.55cm of R2, anchor=north west] (H3)
+  {\texttt{for} query\\[-1pt]\texttt{in} queries};
+
+\node[CB=Cl, text width=2.6cm, below=3pt of H3] (C3a)
+  {up to 20 iterations};
+
+\node[CB=Cl, text width=2.6cm, below=3pt of C3a] (C3b)
+  {$\circlearrowleft$\enspace next query};
+
+\begin{scope}[on background layer]
+\node[RG=Cl, fit=(H3)(C3a)(C3b),
+      label={[font=\tiny\itshape,Cl!70]below:outer loop}] (R3) {};
+\end{scope}
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%% STAGE 5 — DEDUPLICATION  (for c in candidates)
+%%  COLUMN 4 — INNER LOOP / SOURCE SEARCH
 %% ═══════════════════════════════════════════════════════════════════════════
-\node[hdr=colDedupe, minimum width=4.4cm,
-      right=1.5cm of hdr_il] (hdr_dd)
+\node[SH=Cs, text width=4.1cm,
+      right=0.55cm of R3, anchor=north west] (H4)
+  {\texttt{for} source \texttt{in} [arXiv,\,S2,\,OA]};
+
+\node[CB=Cs, text width=4.1cm, below=3pt of H4] (C4a)
+  {\textbf{arXiv}\enspace Atom XML\enspace 25\,r/q\\
+   \tiny 3 retries $\cdot$ 20\,s timeout};
+\node[CB=Cs, text width=4.1cm, below=3pt of C4a] (C4b)
+  {\textbf{Semantic Scholar}\enspace JSON REST\\
+   \tiny 1\,req/s $\cdot$ 429\,$\to$\,backoff [5s,\,15s]};
+\node[CB=Cs, text width=4.1cm, below=3pt of C4b] (C4c)
+  {\textbf{OpenAlex}\enspace JSON REST\enspace 25\,r/q\\
+   \tiny strips \texttt{?} to prevent HTTP\,400};
+\node[IP=Cs, text width=4.1cm, below=3pt of C4c] (C4d)
+  {API error $\Rightarrow$ log(source, query, type) $\Rightarrow$ \textbf{continue}};
+\node[CB=Cs, text width=4.1cm, below=3pt of C4d] (C4e)
+  {$\circlearrowleft$\enspace next source\quad then\quad$\circlearrowleft$\enspace next query};
+
+\begin{scope}[on background layer]
+\node[RG=Cs, fit=(H4)(C4a)(C4b)(C4c)(C4d)(C4e),
+      label={[font=\tiny\itshape,Cs!70]below:inner loop\enspace arxiv.py $\cdot$ semantic\_scholar.py $\cdot$ openalexapi.py}]
+      (R4) {};
+\end{scope}
+
+%% loop-back arrow: bottom of R4 → bottom of R3
+\draw[bk] (R4.south) -- ++(0,-0.4)
+  -- node[below,font=\tiny\itshape,text=Cl!75!black]{outer loop re-enters}
+  ++(-3.35cm,0) -- (R3.south);
+
+%% ═══════════════════════════════════════════════════════════════════════════
+%%  COLUMN 5 — DEDUPLICATION
+%% ═══════════════════════════════════════════════════════════════════════════
+\node[SH=Cd, text width=3.5cm,
+      right=0.55cm of R4, anchor=north west] (H5)
   {\texttt{for} c \texttt{in} candidates};
 
-\node[box={colDedupe}{4.4cm}, below=5pt of hdr_dd] (dd_lbl)
-  {\textbf{DEDUPLICATION} (5-level priority)};
+\node[CB=Cd, text width=3.5cm, below=3pt of H5] (C5lbl)
+  {\textbf{DEDUPLICATION} (5-level)};
+\node[CB=Cd, text width=3.5cm, below=3pt of C5lbl] (C5a)
+  {\tiny\textbf{P1}\enspace DOI};
+\node[CB=Cd, text width=3.5cm, below=2pt of C5a] (C5b)
+  {\tiny\textbf{P2}\enspace arXiv ID};
+\node[CB=Cd, text width=3.5cm, below=2pt of C5b] (C5c)
+  {\tiny\textbf{P3}\enspace OpenAlex ID};
+\node[CB=Cd, text width=3.5cm, below=2pt of C5c] (C5d)
+  {\tiny\textbf{P4}\enspace Semantic Scholar ID};
+\node[CB=Cd, text width=3.5cm, below=2pt of C5d] (C5e)
+  {\tiny\textbf{P5}\enspace title\,$|$\,year\,$|$\,first-author};
+\node[IP=Cd, text width=3.5cm, below=3pt of C5e] (C5f)
+  {merge: fill abstract $\cdot$ combine sources\\keep all IDs $\cdot$ prefer PDF URL};
+\node[CB=Cd, text width=3.5cm, below=3pt of C5f] (C5g)
+  {$\circlearrowleft$\enspace next candidate};
 
-\node[box={colDedupe}{4.4cm}, below=3pt of dd_lbl] (dd_p1)
-  {\scriptsize \textbf{P1} DOI};
-\node[box={colDedupe}{4.4cm}, below=2pt of dd_p1] (dd_p2)
-  {\scriptsize \textbf{P2} arXiv ID};
-\node[box={colDedupe}{4.4cm}, below=2pt of dd_p2] (dd_p3)
-  {\scriptsize \textbf{P3} OpenAlex ID};
-\node[box={colDedupe}{4.4cm}, below=2pt of dd_p3] (dd_p4)
-  {\scriptsize \textbf{P4} Semantic Scholar ID};
-\node[box={colDedupe}{4.4cm}, below=2pt of dd_p4] (dd_p5)
-  {\scriptsize \textbf{P5} title $|$ year $|$ first-author fingerprint};
-\node[pill=colDedupe, below=3pt of dd_p5, text width=4.2cm] (dd_merge)
-  {\scriptsize merge: fill abstract \textbullet{} combine sources \textbullet{} keep IDs \textbullet{} prefer PDF URL};
-\node[font=\scriptsize\bfseries, text=colDedupe!80!black,
-      below=3pt of dd_merge] (dd_back)
-  {$\circlearrowleft$ \; next candidate};
-
-\node[region=colDedupe,
-      fit=(hdr_dd)(dd_back),
-      label={[font=\tiny\itshape, colDedupe!70]below:dedupe.py}]
-  (reg_dd) {};
+\begin{scope}[on background layer]
+\node[RG=Cd, fit=(H5)(C5lbl)(C5a)(C5b)(C5c)(C5d)(C5e)(C5f)(C5g),
+      label={[font=\tiny\itshape,Cd!70]below:dedupe.py}] (R5) {};
+\end{scope}
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%% STAGE 6 — SCORING  (for c in unique_candidates)
+%%  COLUMN 6 — RELEVANCE SCORING
 %% ═══════════════════════════════════════════════════════════════════════════
-\node[hdr=colScore, minimum width=4.6cm,
-      right=1.5cm of hdr_dd] (hdr_sc)
+\node[SH=Cv, text width=3.9cm,
+      right=0.55cm of R5, anchor=north west] (H6)
   {\texttt{for} c \texttt{in} unique\_candidates};
 
-\node[box={colScore}{4.6cm}, below=5pt of hdr_sc] (sc_lbl)
+\node[CB=Cv, text width=3.9cm, below=3pt of H6] (C6lbl)
   {\textbf{RELEVANCE SCORING} (deterministic)};
+\node[CB=Cv, text width=3.9cm, below=3pt of C6lbl] (C6a)
+  {\tiny Title keyword overlap\hfill\normalfont\textbf{0.30}};
+\node[CB=Cv, text width=3.9cm, below=2pt of C6a] (C6b)
+  {\tiny Abstract keyword overlap\hfill\normalfont\textbf{0.25}};
+\node[CB=Cv, text width=3.9cm, below=2pt of C6b] (C6c)
+  {\tiny Research question overlap\hfill\normalfont\textbf{0.20}};
+\node[CB=Cv, text width=3.9cm, below=2pt of C6c] (C6d)
+  {\tiny Query hint overlap\hfill\normalfont\textbf{0.10}};
+\node[CB=Cv, text width=3.9cm, below=2pt of C6d] (C6e)
+  {\tiny Multi-source bonus\hfill\normalfont\textbf{+0.05}/extra};
+\node[CB=Cv, text width=3.9cm, below=2pt of C6e] (C6f)
+  {\tiny Identifier availability ($\div$4)\hfill\normalfont\textbf{0.05}};
+\node[CB=Cv, text width=3.9cm, below=2pt of C6f] (C6g)
+  {\tiny Open-access PDF\hfill\normalfont\textbf{0.03}};
+\node[CB=Cv, text width=3.9cm, below=2pt of C6g] (C6h)
+  {\tiny Year in declared range\hfill\normalfont\textbf{0.07}};
+\node[IP=Cv, text width=3.9cm, below=3pt of C6h] (C6i)
+  {tokens: words $\geq$3 chars, 50 stop-words removed\\
+   score clipped $[0,1]$, 4 decimal places};
+\node[CB=Cv, text width=3.9cm, below=3pt of C6i] (C6j)
+  {$\circlearrowleft$\enspace next candidate};
 
-\node[box={colScore}{4.6cm}, below=3pt of sc_lbl] (sc_t)
-  {\scriptsize Title keyword overlap \hfill \textbf{0.30}};
-\node[box={colScore}{4.6cm}, below=2pt of sc_t] (sc_a)
-  {\scriptsize Abstract keyword overlap \hfill \textbf{0.25}};
-\node[box={colScore}{4.6cm}, below=2pt of sc_a] (sc_rq)
-  {\scriptsize Research question overlap \hfill \textbf{0.20}};
-\node[box={colScore}{4.6cm}, below=2pt of sc_rq] (sc_h)
-  {\scriptsize Query hint overlap \hfill \textbf{0.10}};
-\node[box={colScore}{4.6cm}, below=2pt of sc_h] (sc_s)
-  {\scriptsize Multi-source bonus \hfill \textbf{+0.05}/extra};
-\node[box={colScore}{4.6cm}, below=2pt of sc_s] (sc_id)
-  {\scriptsize Identifier availability ($\div$4) \hfill \textbf{0.05}};
-\node[box={colScore}{4.6cm}, below=2pt of sc_id] (sc_pdf)
-  {\scriptsize Open-access PDF \hfill \textbf{0.03}};
-\node[box={colScore}{4.6cm}, below=2pt of sc_pdf] (sc_yr)
-  {\scriptsize Year in declared range \hfill \textbf{0.07}};
-\node[pill=colScore, below=3pt of sc_yr, text width=4.4cm] (sc_note)
-  {\scriptsize tokens: words $\ge$3 chars, 50 stop-words removed; score clipped $[0,1]$, 4 d.p.};
-\node[font=\scriptsize\bfseries, text=colScore!80!black,
-      below=3pt of sc_note] (sc_back)
-  {$\circlearrowleft$ \; next candidate};
-
-\node[region=colScore,
-      fit=(hdr_sc)(sc_back),
-      label={[font=\tiny\itshape, colScore!70]below:scorer.py}]
-  (reg_sc) {};
+\begin{scope}[on background layer]
+\node[RG=Cv, fit=(H6)(C6lbl)(C6a)(C6b)(C6c)(C6d)(C6e)(C6f)(C6g)(C6h)(C6i)(C6j),
+      label={[font=\tiny\itshape,Cv!70]below:scorer.py}] (R6) {};
+\end{scope}
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%% STAGE 7 — FILTERING  (for c in scored_candidates)
+%%  COLUMN 7 — FILTERING
 %% ═══════════════════════════════════════════════════════════════════════════
-\node[hdr=colFilter, minimum width=4.2cm,
-      right=1.5cm of hdr_sc] (hdr_fl)
+\node[SH=Cf, text width=3.5cm,
+      right=0.55cm of R6, anchor=north west] (H7)
   {\texttt{for} c \texttt{in} scored\_candidates};
 
-\node[box={colFilter}{4.2cm}, below=5pt of hdr_fl] (fl_lbl)
+\node[CB=Cf, text width=3.5cm, below=3pt of H7] (C7lbl)
   {\textbf{FILTERING} (ordered rules)};
+\node[CB=Cf, text width=3.5cm, below=3pt of C7lbl] (C7a)
+  {\tiny\textbf{R1}\enspace missing\_title $\to$ reject};
+\node[CB=Cf, text width=3.5cm, below=2pt of C7a] (C7b)
+  {\tiny\textbf{R2}\enspace year\_out\_of\_range $\to$ reject};
+\node[CB=Cf, text width=3.5cm, below=2pt of C7b] (C7c)
+  {\tiny\textbf{R3}\enspace below\_relevance\_threshold $\to$ reject};
+\node[CB=Cf, text width=3.5cm, below=2pt of C7c] (C7d)
+  {\tiny else $\to$ \textbf{accept}};
+\node[IP=Cf, text width=3.5cm, below=3pt of C7d] (C7e)
+  {first match wins $\cdot$ every reject has explicit reason};
+\node[CB=Cf, text width=3.5cm, below=3pt of C7e] (C7f)
+  {$\circlearrowleft$\enspace next candidate};
 
-\node[box={colFilter}{4.2cm}, below=3pt of fl_lbl] (fl_r1)
-  {\scriptsize \textbf{R1} missing\_title $\to$ reject};
-\node[box={colFilter}{4.2cm}, below=2pt of fl_r1] (fl_r2)
-  {\scriptsize \textbf{R2} year\_out\_of\_range $\to$ reject};
-\node[box={colFilter}{4.2cm}, below=2pt of fl_r2] (fl_r3)
-  {\scriptsize \textbf{R3} below\_relevance\_threshold $\to$ reject};
-\node[box={colFilter}{4.2cm}, below=2pt of fl_r3] (fl_else)
-  {\scriptsize else $\to$ \textbf{accept}};
-\node[pill=colFilter, below=3pt of fl_else, text width=4.0cm] (fl_note)
-  {\scriptsize first-match wins \textbullet{} every reject carries an explicit reason string};
-\node[font=\scriptsize\bfseries, text=colFilter!80!black,
-      below=3pt of fl_note] (fl_back)
-  {$\circlearrowleft$ \; next candidate};
-
-\node[region=colFilter,
-      fit=(hdr_fl)(fl_back),
-      label={[font=\tiny\itshape, colFilter!70]below:filters.py}]
-  (reg_fl) {};
+\begin{scope}[on background layer]
+\node[RG=Cf, fit=(H7)(C7lbl)(C7a)(C7b)(C7c)(C7d)(C7e)(C7f),
+      label={[font=\tiny\itshape,Cf!70]below:filters.py}] (R7) {};
+\end{scope}
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%% ACCEPT / REJECT split
+%%  ACCEPT / REJECT SPLIT
 %% ═══════════════════════════════════════════════════════════════════════════
 \node[rectangle, rounded corners=3pt,
-      draw=colFilter, fill=colFilter!18,
-      font=\small\bfseries, inner sep=5pt,
-      below=1.1cm of reg_fl.south, xshift=-1.3cm] (acc_node) {ACCEPTED};
+      draw=Cf!75!black, fill=Cf!18, font=\scriptsize\bfseries,
+      inner sep=5pt, below=1.2cm of R7.south, xshift=-1.4cm] (ACC) {ACCEPTED};
 
 \node[rectangle, rounded corners=3pt,
-      draw=colReject, fill=colReject!13,
-      font=\small\bfseries, inner sep=5pt,
-      right=0.5cm of acc_node] (rej_node) {REJECTED};
+      draw=Cr!75!black, fill=Cr!14, font=\scriptsize\bfseries,
+      inner sep=5pt, right=0.4cm of ACC] (REJ) {REJECTED};
 
-\draw[arr=colFilter] (reg_fl.south) -- ++(0,-0.35) -| (acc_node.north)
-  node[pos=0.2, right, font=\tiny, colFilter]{accept};
-\draw[rejarr]        (reg_fl.south) -- ++(0,-0.35) -| (rej_node.north)
-  node[pos=0.2, left, font=\tiny, colReject]{reject};
+\draw[fwd=Cf] (R7.south) -- ++(0,-0.35) -| (ACC.north)
+  node[pos=0.15,right,font=\tiny,Cf!80!black]{accept};
+\draw[rej]    (R7.south) -- ++(0,-0.35) -| (REJ.north)
+  node[pos=0.15,left,font=\tiny,Cr]{reject};
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%% BOTTOM ROW
+%%  BOTTOM ROW — PERSISTENCE
 %% ═══════════════════════════════════════════════════════════════════════════
+\node[SH=Cp, text width=4.6cm,
+      below=2.6cm of ACC.south, anchor=north] (HP) {PERSISTENCE};
 
-%% ─── PERSISTENCE ──────────────────────────────────────────────────────────
-\node[hdr=colPersist, minimum width=4.8cm,
-      below=2.5cm of acc_node.south, xshift=1.0cm] (hdr_ps) {PERSISTENCE};
+\node[CB=Cp, text width=4.6cm, below=3pt of HP] (Pa)
+  {\tiny\texttt{data/papers.ndjson}\quad(append, NDJSON)};
+\node[CB=Cp, text width=4.6cm, below=2pt of Pa] (Pb)
+  {\tiny\texttt{data/rejects.ndjson}\quad(append, NDJSON)};
+\node[CB=Cp, text width=4.6cm, below=2pt of Pb] (Pc)
+  {\tiny\texttt{data/run\_history.ndjson}};
+\node[CB=Cp, text width=4.6cm, below=2pt of Pc] (Pd)
+  {\tiny\texttt{data/changelog.md}};
 
-\node[box={colPersist}{4.8cm}, below=5pt of hdr_ps] (ps_papers)
-  {\scriptsize \texttt{data/papers.ndjson} \quad (append, NDJSON)};
-\node[box={colPersist}{4.8cm}, below=3pt of ps_papers] (ps_rej)
-  {\scriptsize \texttt{data/rejects.ndjson} \quad (append, NDJSON)};
-\node[box={colPersist}{4.8cm}, below=3pt of ps_rej] (ps_hist)
-  {\scriptsize \texttt{data/run\_history.ndjson}};
-\node[box={colPersist}{4.8cm}, below=3pt of ps_hist] (ps_clog)
-  {\scriptsize \texttt{data/changelog.md}};
+\begin{scope}[on background layer]
+\node[RG=Cp, fit=(HP)(Pa)(Pb)(Pc)(Pd),
+      label={[font=\tiny\itshape,Cp!60]below:store.py\enspace paper\_id = "p" + sha256[:15]}]
+      (RP) {};
+\end{scope}
 
-\node[region=colPersist,
-      fit=(hdr_ps)(ps_clog),
-      label={[font=\tiny\itshape, colPersist!70]below:store.py \textbullet{} paper\_id = "p" + sha256[:15]}]
-  (reg_ps) {};
+\draw[fwd=Cf] (ACC.south) -- ++(0,-0.3) -| (Pa.north)
+  node[pos=0.1,right,font=\tiny]{papers};
+\draw[rej]    (REJ.south) -- ++(0,-0.3) -| (Pb.north)
+  node[pos=0.1,left,font=\tiny]{rejects};
 
-\draw[arr=colFilter]  (acc_node.south) -- ++(0,-0.3) -| (ps_papers.north)
-  node[pos=0.1, right, font=\tiny]{papers};
-\draw[rejarr]         (rej_node.south) -- ++(0,-0.3) -| (ps_rej.north)
-  node[pos=0.1, left, font=\tiny]{rejects};
+%% ─── SITE PUBLISH ──────────────────────────────────────────────────────────
+\node[SH=Cw, text width=4.2cm, left=0.8cm of RP, anchor=east] (HW) {SITE PUBLISH};
 
-%% ─── SITE PUBLISH ─────────────────────────────────────────────────────────
-\node[hdr=colSite, minimum width=4.2cm,
-      left=1.6cm of hdr_ps] (hdr_site) {SITE PUBLISH};
+\node[CB=Cw, text width=4.2cm, below=3pt of HW] (Wa)
+  {\tiny\texttt{site/data/papers.json}};
+\node[CB=Cw, text width=4.2cm, below=2pt of Wa] (Wb)
+  {\tiny\texttt{site/data/rejects.json}};
+\node[CB=Cw, text width=4.2cm, below=2pt of Wb] (Wc)
+  {\tiny\texttt{site/data/run\_history.json}};
+\node[CB=Cw, text width=4.2cm, below=2pt of Wc] (Wd)
+  {\tiny\texttt{site/data/survey\_config.json}};
+\node[CB=Cw, text width=4.2cm, below=2pt of Wd] (We)
+  {\tiny\texttt{site/data/system\_status.json}};
 
-\node[box={colSite}{4.2cm}, below=5pt of hdr_site] (st_p)
-  {\scriptsize \texttt{site/data/papers.json}};
-\node[box={colSite}{4.2cm}, below=3pt of st_p] (st_r)
-  {\scriptsize \texttt{site/data/rejects.json}};
-\node[box={colSite}{4.2cm}, below=3pt of st_r] (st_h)
-  {\scriptsize \texttt{site/data/run\_history.json}};
-\node[box={colSite}{4.2cm}, below=3pt of st_h] (st_cfg)
-  {\scriptsize \texttt{site/data/survey\_config.json}};
-\node[box={colSite}{4.2cm}, below=3pt of st_cfg] (st_sys)
-  {\scriptsize \texttt{site/data/system\_status.json}};
+\begin{scope}[on background layer]
+\node[RG=Cw, fit=(HW)(Wa)(Wb)(Wc)(Wd)(We),
+      label={[font=\tiny\itshape,Cw!60]below:publish\_site\_data()}]
+      (RW) {};
+\end{scope}
 
-\node[region=colSite,
-      fit=(hdr_site)(st_sys),
-      label={[font=\tiny\itshape, colSite!70]below:publish\_site\_data()}]
-  (reg_site) {};
+\draw[fwd=Cp] (RP.west) -- node[above,font=\tiny]{export} (RW.east);
 
-\draw[arr=colPersist] (reg_ps.west) -- node[above,font=\tiny]{export} (reg_site.east);
+%% ─── MANAGER RUN RESULT ────────────────────────────────────────────────────
+\node[SH=Co, text width=4.6cm, left=0.8cm of RW, anchor=east] (HO) {MANAGER RUN RESULT};
 
-%% ─── MANAGER RUN RESULT ───────────────────────────────────────────────────
-\node[hdr=colResult, minimum width=4.8cm,
-      left=1.6cm of hdr_site] (hdr_res) {MANAGER RUN RESULT};
+\node[CB=Co, text width=4.6cm, below=3pt of HO] (Oa)
+  {architecture = \texttt{"baseline"}};
+\node[CB=Co, text width=4.6cm, below=2pt of Oa] (Ob)
+  {\tiny queries\_generated\enspace$\cdot$\enspace sources\_queried};
+\node[CB=Co, text width=4.6cm, below=2pt of Ob] (Oc)
+  {\tiny candidates\_found\enspace$\cdot$\enspace candidates\_after\_dedupe};
+\node[CB=Co, text width=4.6cm, below=2pt of Oc] (Od)
+  {\tiny papers\_accepted\enspace$\cdot$\enspace candidates\_rejected};
+\node[CB=Co, text width=4.6cm, below=2pt of Od] (Oe)
+  {\tiny dry\_run\enspace$\cdot$\enspace started\_at\enspace$\cdot$\enspace finished\_at};
+\node[IP=Co, text width=4.6cm, below=3pt of Oe] (Of)
+  {errors: list of non-fatal error strings};
 
-\node[box={colResult}{4.8cm}, below=5pt of hdr_res] (res_box)
-  {\scriptsize
-   architecture = "baseline"\\[2pt]
-   queries\_generated \textbullet{} sources\_queried\\
-   candidates\_found \textbullet{} candidates\_after\_dedupe\\
-   papers\_accepted \textbullet{} candidates\_rejected\\
-   dry\_run \textbullet{} started\_at \textbullet{} finished\_at\\[3pt]
-   \textit{errors}: list of non-fatal error strings};
+\begin{scope}[on background layer]
+\node[RG=Co, fit=(HO)(Oa)(Ob)(Oc)(Od)(Oe)(Of)] (RO) {};
+\end{scope}
 
-\node[region=colResult, fit=(hdr_res)(res_box)] (reg_res) {};
+\draw[fwd=Cw] (RW.west) -- node[above,font=\tiny]{metadata} (RO.east);
 
-\draw[arr=colSite] (reg_site.west) -- node[above,font=\tiny]{metadata} (reg_res.east);
-
-%% ─── dry-run note ─────────────────────────────────────────────────────────
+%% ─── DRY-RUN NOTE ──────────────────────────────────────────────────────────
 \node[rectangle, rounded corners=3pt,
-      draw=gray!55, fill=gray!8,
-      font=\scriptsize\itshape, inner sep=5pt,
-      below=4pt of reg_res.south, anchor=north] (dryrun)
+      draw=gray!55, fill=gray!9, font=\tiny\itshape,
+      inner sep=4pt, below=5pt of RO.south, anchor=north] (DR)
   {\texttt{--dry-run}: all file writes are simulated; all loop logic executes identically};
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%% MAIN FLOW ARROWS (horizontal top row)
+%%  MAIN FLOW ARROWS (horizontal top row)
 %% ═══════════════════════════════════════════════════════════════════════════
-\draw[arr=colInput]  (reg_input.east)  -- node[above,font=\tiny]{config}   (reg_qb.west);
-\draw[arr=colQuery]  (reg_qb.east)     -- node[above,font=\tiny]{queries}  (reg_ol.west);
-\draw[arr=colLoop]   (reg_ol.east)     -- node[above,font=\tiny]{query}    (reg_il.west);
-\draw[arr=colSource] (reg_il.east)     -- node[above,font=\tiny]{raw list} (reg_dd.west);
-\draw[arr=colDedupe] (reg_dd.east)     -- node[above,font=\tiny]{unique}   (reg_sc.west);
-\draw[arr=colScore]  (reg_sc.east)     -- node[above,font=\tiny]{scored}   (reg_fl.west);
+\draw[fwd=Ci]  (R1.east) -- node[above,font=\tiny]{config}   (R2.west);
+\draw[fwd=Cq]  (R2.east) -- node[above,font=\tiny]{queries}  (R3.west);
+\draw[fwd=Cl]  (R3.east) -- node[above,font=\tiny]{query}    (R4.west);
+\draw[fwd=Cs]  (R4.east) -- node[above,font=\tiny]{raw list} (R5.west);
+\draw[fwd=Cd]  (R5.east) -- node[above,font=\tiny]{unique}   (R6.west);
+\draw[fwd=Cv]  (R6.east) -- node[above,font=\tiny]{scored}   (R7.west);
 
 %% ═══════════════════════════════════════════════════════════════════════════
-%% LEGEND
+%%  LEGEND
 %% ═══════════════════════════════════════════════════════════════════════════
 \node[rectangle, rounded corners=4pt,
-      draw=colLoop!55, fill=colLoop!7,
-      font=\scriptsize, inner sep=7pt, align=left,
-      below=0.5cm of dryrun.south, anchor=north] (legend)
-  {\textbf{Loop Control Legend}\\[4pt]
-   $\circlearrowleft$\; \textbf{Outer loop}: \texttt{for query in queries} \quad up to 20 iterations\\[3pt]
-   $\circlearrowleft$\; \textbf{Inner loop}: \texttt{for source in [arXiv, S2, OpenAlex]} \quad 3 iterations per query \quad
-        \textit{total calls} $\leq 60$\\[3pt]
-   $\circlearrowleft$\; \textbf{Candidate loops} (x3): dedupe, score, filter each run \texttt{for c in candidates}\\[3pt]
-   \textcolor{colReject}{\textbf{- -$\,\blacktriangleright$}}\; reject path \quad
-   \textcolor{colFilter}{\textbf{---$\blacktriangleright$}}\; accept path \quad
-   \textcolor{colLoop!80!black}{\textbf{---$\blacktriangleright$}}\; loop back-edge (amber)};
-
-%% CLI footer
-\node[font=\tiny\ttfamily, text=gray!80,
-      below=4pt of legend.south, anchor=north] (clinote)
-  {python -m app.run --architecture baseline [--dry-run] [--verbose] \quad|\quad
-   pipeline.py orchestrates all loops \quad|\quad store.py handles all I/O};
+      draw=Cl!50!black, fill=Cl!7,
+      font=\tiny, inner sep=6pt, align=left,
+      below=0.4cm of DR.south, anchor=north] (LEG)
+  {\textbf{Loop Control Legend}\quad
+   $\circlearrowleft$\,\textbf{outer}: \texttt{for query in queries} ($\leq$20)\quad
+   $\circlearrowleft$\,\textbf{inner}: \texttt{for source in [arXiv,S2,OA]} (3/query)\quad
+   $\circlearrowleft$\,\textbf{candidate} (x3): dedupe\,$\cdot$\,score\,$\cdot$\,filter\\[2pt]
+   \textcolor{Cr}{\textbf{-\,-\,$\blacktriangleright$}}\,reject path\quad
+   \textcolor{Cf}{\textbf{---$\blacktriangleright$}}\,accept path\quad
+   \textcolor{Cl!80!black}{\textbf{---$\blacktriangleright$}}\,loop back-edge\quad\quad
+   \texttt{python -m app.run --architecture baseline [--dry-run] [--verbose]}};
 
 \end{tikzpicture}
 \end{document}
