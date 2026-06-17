@@ -4,6 +4,77 @@ from typing import Dict, List, Optional, Tuple
 from app.state.schemas import PaperCandidate
 
 
+class IncrementalDeduplicator:
+    """
+    Stateful deduplicator for use across multiple search batches.
+
+    Unlike the batch ``deduplicate()`` function, this class maintains its
+    index across calls to ``add_batch()``, so the outer search loop can
+    measure the new-paper yield rate after each query and detect saturation
+    without waiting until all queries have finished.
+    """
+
+    def __init__(self) -> None:
+        self._by_doi: Dict[str, int] = {}
+        self._by_arxiv: Dict[str, int] = {}
+        self._by_openalex: Dict[str, int] = {}
+        self._by_s2: Dict[str, int] = {}
+        self._by_fp: Dict[str, int] = {}
+        self._unique: List[PaperCandidate] = []
+
+    @property
+    def unique(self) -> List[PaperCandidate]:
+        return list(self._unique)
+
+    def __len__(self) -> int:
+        return len(self._unique)
+
+    def add_batch(self, candidates: List[PaperCandidate]) -> int:
+        """
+        Add a batch of candidates.  Duplicates are merged into the existing
+        record in place.  Returns the count of *genuinely new* papers added.
+        """
+        new = 0
+        for c in candidates:
+            new += self._add_one(c)
+        return new
+
+    def _add_one(self, candidate: PaperCandidate) -> int:
+        ids = candidate.identifiers
+        existing: Optional[int] = None
+
+        if ids.doi:
+            existing = self._by_doi.get(ids.doi)
+        if existing is None and ids.arxiv_id:
+            existing = self._by_arxiv.get(ids.arxiv_id)
+        if existing is None and ids.openalex_id:
+            existing = self._by_openalex.get(ids.openalex_id)
+        if existing is None and ids.semantic_scholar_id:
+            existing = self._by_s2.get(ids.semantic_scholar_id)
+
+        fp = _fingerprint(candidate)
+        if existing is None and fp:
+            existing = self._by_fp.get(fp)
+
+        if existing is not None:
+            _merge(self._unique[existing], candidate)
+            return 0
+
+        idx = len(self._unique)
+        self._unique.append(candidate)
+        if ids.doi:
+            self._by_doi[ids.doi] = idx
+        if ids.arxiv_id:
+            self._by_arxiv[ids.arxiv_id] = idx
+        if ids.openalex_id:
+            self._by_openalex[ids.openalex_id] = idx
+        if ids.semantic_scholar_id:
+            self._by_s2[ids.semantic_scholar_id] = idx
+        if fp:
+            self._by_fp[fp] = idx
+        return 1
+
+
 def deduplicate(
     candidates: List[PaperCandidate],
 ) -> Tuple[List[PaperCandidate], List[PaperCandidate]]:

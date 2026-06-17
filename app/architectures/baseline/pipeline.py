@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 from app.state.schemas import ManagerRunResult, PaperCandidate, SurveyConfig
 from app.state import store
 from app.architectures.baseline.query_builder import build_queries
-from app.architectures.baseline.dedupe import deduplicate
+from app.architectures.baseline.dedupe import IncrementalDeduplicator
 from app.architectures.baseline.scorer import score as compute_score
 from app.architectures.baseline.filters import apply_filters
 from app.sources import arxiv, semantic_scholar, openalexapi
@@ -15,6 +15,25 @@ logger = logging.getLogger(__name__)
 
 SOURCES = ["arxiv", "semantic_scholar", "openalex"]
 RESULTS_PER_SOURCE = 25
+
+# ── Loop-control constants ────────────────────────────────────────────────────
+# Saturation detection: if the rolling average new-paper yield over the last
+# SATURATION_WINDOW queries drops below SATURATION_THRESHOLD, the outer loop
+# exits early.  A yield of 0.05 means fewer than 5 % of the raw API results
+# were papers not already seen — a strong signal that more queries add little.
+SATURATION_WINDOW = 3
+SATURATION_THRESHOLD = 0.05
+
+# Source failure tracking: if the same source raises exceptions on
+# MAX_SOURCE_FAILURES consecutive queries it is skipped for all remaining
+# queries in this run.  A transient network blip resets the counter.
+MAX_SOURCE_FAILURES = 3
+
+_SOURCE_MAP = [
+    ("arxiv", arxiv),
+    ("semantic_scholar", semantic_scholar),
+    ("openalex", openalexapi),
+]
 
 
 def run(
@@ -42,12 +61,12 @@ def run(
         return _make_result(0, 0, 0, 0, 0, dry_run, started_at, errors)
 
     logger.info("Source search started")
-    all_candidates = _search_all(queries, config, errors)
-    logger.info("Source search completed: %d raw candidates", len(all_candidates))
-    candidates_found = len(all_candidates)
-
-    unique, _ = deduplicate(all_candidates)
-    logger.info("Deduplication completed: %d unique", len(unique))
+    unique, candidates_found = _search_all(queries, config, errors)
+    logger.info(
+        "Source search completed: %d raw candidates, %d unique",
+        candidates_found,
+        len(unique),
+    )
     after_dedupe = len(unique)
 
     for c in unique:
@@ -97,15 +116,50 @@ def _search_all(
     queries: List[str],
     config: SurveyConfig,
     errors: List[str],
-) -> List[PaperCandidate]:
-    candidates: List[PaperCandidate] = []
-    source_map = [
-        ("arxiv", arxiv),
-        ("semantic_scholar", semantic_scholar),
-        ("openalex", openalexapi),
-    ]
-    for query in queries:
-        for src_name, src_module in source_map:
+) -> Tuple[List[PaperCandidate], int]:
+    """
+    Search all sources for every query using three loop-control mechanisms:
+
+    1. Query pre-sorting (specificity order)
+       Queries are sorted shortest-first before the outer loop begins.
+       Shorter strings are typically the most targeted keyword phrases (R3
+       hints), so the outer loop exhausts precise queries before broader ones.
+       This maximises utility when saturation triggers an early exit.
+
+    2. Incremental deduplication + saturation detection (outer loop)
+       Deduplication runs *inside* the outer loop rather than in a single
+       batch after all searches finish.  After each query the new-paper yield
+       rate (new unique / total raw) is measured.  When the rolling average
+       over SATURATION_WINDOW queries drops below SATURATION_THRESHOLD the
+       outer loop exits: further queries are unlikely to contribute new papers.
+
+    3. Source failure tracking (inner loop)
+       Each source keeps a consecutive-failure counter.  If a source raises
+       exceptions on MAX_SOURCE_FAILURES queries in a row it is skipped for
+       all remaining queries in this run.  A successful response resets the
+       counter, so a transient failure does not permanently disable a source.
+
+    Returns (unique_candidates, total_raw_count).
+    """
+    deduplicator = IncrementalDeduplicator()
+    total_raw = 0
+    source_failures = {name: 0 for name, _ in _SOURCE_MAP}
+    recent_yields: List[float] = []
+
+    # ── Pre-sort: shortest queries first (most targeted keyword phrases) ──────
+    sorted_queries = sorted(queries, key=len)
+
+    for qi, query in enumerate(sorted_queries):
+        raw_this_query = 0
+        new_this_query = 0
+
+        # ── Inner loop with failure tracking ─────────────────────────────────
+        for src_name, src_module in _SOURCE_MAP:
+            if source_failures[src_name] >= MAX_SOURCE_FAILURES:
+                logger.warning(
+                    "Skipping %s: %d consecutive failures", src_name, MAX_SOURCE_FAILURES
+                )
+                continue
             try:
                 results = src_module.search(
                     query,
@@ -113,13 +167,48 @@ def _search_all(
                     year_from=config.timeline_from_year,
                     year_to=config.timeline_to_year,
                 )
-                candidates.extend(results)
-                logger.debug("  %s → %d for: %.40s", src_name, len(results), query)
+                n_new = deduplicator.add_batch(results)
+                raw_this_query += len(results)
+                new_this_query += n_new
+                source_failures[src_name] = 0
+                logger.debug(
+                    "  %s → %d raw, %d new  query: %.40s",
+                    src_name, len(results), n_new, query,
+                )
             except Exception as exc:
+                source_failures[src_name] += 1
                 msg = f"{src_name} error on {query!r:.40}: {exc}"
                 logger.error(msg)
                 errors.append(msg)
-    return candidates
+
+        total_raw += raw_this_query
+
+        # ── Saturation detection ──────────────────────────────────────────────
+        yield_rate = new_this_query / max(raw_this_query, 1)
+        recent_yields.append(yield_rate)
+        logger.debug(
+            "  Query %d/%d: %d new / %d raw = %.0f%% yield  (unique so far: %d)",
+            qi + 1, len(sorted_queries),
+            new_this_query, raw_this_query,
+            yield_rate * 100,
+            len(deduplicator),
+        )
+
+        if len(recent_yields) >= SATURATION_WINDOW:
+            window_yield = (
+                sum(recent_yields[-SATURATION_WINDOW:]) / SATURATION_WINDOW
+            )
+            if window_yield < SATURATION_THRESHOLD:
+                logger.info(
+                    "Saturation: %.1f%% avg yield over last %d queries — "
+                    "stopping after query %d/%d (%d unique papers so far)",
+                    window_yield * 100, SATURATION_WINDOW,
+                    qi + 1, len(sorted_queries),
+                    len(deduplicator),
+                )
+                break
+
+    return deduplicator.unique, total_raw
 
 
 def _load_config(
